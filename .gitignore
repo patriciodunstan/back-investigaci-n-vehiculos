@@ -303,3 +303,9 @@ dev_notes.md
 TODO.md
 notes.md
 
+# Documentación con información sensible (no subir al repositorio)
+docs/RENDER_SETUP_GUIDE.md
+docs/VERCEL_CORS_SETUP.md
+docs/RENDER_DEPLOYMENT.md
+docs/NEON_SETUP.md
+

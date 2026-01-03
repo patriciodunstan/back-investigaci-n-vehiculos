@@ -38,10 +38,14 @@ class UsuarioRepository(IUsuarioRepository):
             activo=model.activo,
             avatar_url=model.avatar_url,
         )
-        # Asignar campos de la base entity manualmente
-        usuario.id = model.id
-        usuario.create_at = model.created_at
-        usuario.update_at = model.updated_at
+        # Asignar campos de la base entity manualmente usando object.__setattr__ para campos inmutables
+        # BaseEntity usa create_at/update_at, pero SQLAlchemy usa created_at/updated_at
+        if model.id:
+            object.__setattr__(usuario, "id", model.id)
+        if model.created_at:
+            object.__setattr__(usuario, "create_at", model.created_at)
+        if model.updated_at:
+            object.__setattr__(usuario, "update_at", model.updated_at)
         return usuario
 
     def _entity_to_model(self, entity: Usuario) -> UsuarioModel:

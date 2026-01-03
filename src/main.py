@@ -82,13 +82,26 @@ app = FastAPI(
 
 
 # Configurar CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Si BACKEND_CORS_ORIGINS contiene "*" o está vacío, permitir todos los orígenes
+cors_origins = settings.BACKEND_CORS_ORIGINS
+if "*" in cors_origins or not cors_origins:
+    # Permitir todos los orígenes
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,  # No se puede usar con allow_origins=["*"]
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # Permitir solo orígenes específicos
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Agregar middlewares personalizados
 app.add_middleware(ErrorHandlerMiddleware)
