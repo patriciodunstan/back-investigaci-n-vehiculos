@@ -1,0 +1,77 @@
+[MASTER]
+# Archivos/directorios a ignorar
+ignore=alembic,venv,.env_new,__pycache__,.git
+ignore-patterns=test_.*\.py
+
+# Usar multiples procesos
+jobs=0
+
+# Permitir imports desde src
+init-hook=import sys; sys.path.insert(0, '.')
+
+[MESSAGES CONTROL]
+# Deshabilitar mensajes que no aplican o son muy ruidosos
+disable=
+    # Imports
+    import-error,
+    no-name-in-module,
+    unused-wildcard-import,
+    wildcard-import,
+    # Formato
+    line-too-long,
+    trailing-whitespace,
+    missing-final-newline,
+    # Documentacion
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Clases y metodos
+    too-few-public-methods,
+    no-self-argument,
+    no-member,
+    not-callable,
+    # Variables
+    invalid-name,
+    redefined-outer-name,
+    unused-argument,
+    # Logging
+    logging-fstring-interpolation,
+    logging-format-interpolation,
+    # Otros
+    fixme,
+    broad-exception-caught,
+    raise-missing-from,
+
+[FORMAT]
+# Longitud maxima de linea
+max-line-length=100
+
+[DESIGN]
+# Limites de complejidad
+max-args=10
+max-locals=20
+max-returns=8
+max-branches=15
+max-statements=60
+max-attributes=15
+max-public-methods=25
+
+[SIMILARITIES]
+# Ignorar imports en deteccion de codigo duplicado
+ignore-imports=yes
+min-similarity-lines=10
+
+[TYPECHECK]
+# Modulos que generan atributos dinamicamente
+generated-members=sqlalchemy.*,func.*
+
+[BASIC]
+# Permitir nombres cortos validos
+good-names=i,j,k,db,id,pk,e,f,ex,_
+
+# Patron para nombres de argumentos
+argument-rgx=[a-z_][a-z0-9_]{0,30}$
+
+# Patron para nombres de variables
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
+

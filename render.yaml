@@ -1,0 +1,35 @@
+# Render Blueprint para despliegue automático
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: investigaciones-backend
+    env: python
+    region: oregon  # Cambia según tu preferencia: oregon, frankfurt, singapore
+    plan: free  # Cambia a starter para producción ($7/mes)
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: APP_NAME
+        value: Sistema de Investigaciones Vehiculares
+      - key: API_V1_STR
+        value: /api/v1
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: LOG_LEVEL
+        value: INFO
+      # IMPORTANTE: Configura estas variables en el dashboard de Render
+      # No las pongas aquí por seguridad
+      # - key: DATABASE_URL
+      #   sync: false  # Debe configurarse manualmente
+      # - key: SECRET_KEY
+      #   generateValue: true  # Render puede generar esto automáticamente
+      # - key: BACKEND_CORS_ORIGINS
+      #   sync: false  # Configura según tu dominio frontend
+

@@ -1,0 +1,208 @@
+[project]
+name = "investigaciones-vehiculares"
+version = "1.0.0"
+description = "Sistema de Investigaciones Vehiculares - API Backend"
+requires-python = ">=3.11"
+
+[tool.pylint.main]
+# Archivos/directorios a ignorar
+ignore = ["alembic", "venv", ".env_new", "__pycache__", ".git"]
+ignore-patterns = ["test_.*\\.py"]
+
+# Usar multiples procesos
+jobs = 0
+
+# Permitir imports desde src
+init-hook = "import sys; sys.path.insert(0, '.')"
+
+[tool.pylint.messages_control]
+# Deshabilitar mensajes que no aplican o son muy ruidosos
+disable = [
+    # Imports
+    "import-error",              # Pylint no resuelve bien imports de src.*
+    "no-name-in-module",         # Falsos positivos con SQLAlchemy y otros
+    "unused-wildcard-import",    # Necesario para registrar modelos SQLAlchemy
+    
+    # Formato (usar black/ruff en lugar de pylint para esto)
+    "line-too-long",             # Black maneja esto
+    "trailing-whitespace",
+    "missing-final-newline",
+    
+    # Documentacion (relajar para desarrollo rapido)
+    "missing-module-docstring",
+    "missing-class-docstring", 
+    "missing-function-docstring",
+    
+    # Clases y metodos
+    "too-few-public-methods",    # Dataclasses y DTOs legitimos
+    "no-self-argument",          # Falso positivo con @declared_attr de SQLAlchemy
+    "no-member",                 # Falso positivo con SQLAlchemy
+    "not-callable",              # Falso positivo con func.now() de SQLAlchemy
+    
+    # Variables
+    "invalid-name",              # Permitir nombres como 'db', 'id', etc.
+    "redefined-outer-name",      # Comun en FastAPI con Depends
+    "unused-argument",           # Comun en handlers y middlewares
+    
+    # Logging
+    "logging-fstring-interpolation",  # Permitir f-strings en logging
+    "logging-format-interpolation",   # Permitir .format() en logging
+    
+    # Otros
+    "fixme",                     # Permitir TODO y FIXME
+    "broad-exception-caught",    # A veces es necesario catch Exception
+    "raise-missing-from",        # No siempre es necesario
+]
+
+# Habilitar solo errores criticos en algunas categorias
+enable = [
+    "useless-suppression",
+]
+
+[tool.pylint.format]
+# Longitud maxima de linea (Black usa 88)
+max-line-length = 100
+
+[tool.pylint.design]
+# Limites de complejidad
+max-args = 10
+max-locals = 20
+max-returns = 8
+max-branches = 15
+max-statements = 60
+max-attributes = 15
+max-public-methods = 25
+
+[tool.pylint.similarities]
+# Ignorar imports en deteccion de codigo duplicado
+ignore-imports = true
+min-similarity-lines = 10
+
+[tool.pylint.typecheck]
+# Modulos que generan atributos dinamicamente
+generated-members = ["sqlalchemy.*", "func.*"]
+
+# Decoradores que cambian la firma
+ignored-classes = ["SQLAlchemy", "Session", "scoped_session"]
+
+[tool.pylint.basic]
+# Permitir nombres cortos validos
+good-names = ["i", "j", "k", "db", "id", "pk", "e", "f", "ex", "_"]
+
+# Patron para nombres de argumentos
+argument-rgx = "[a-z_][a-z0-9_]{0,30}$"
+
+# Patron para nombres de variables
+variable-rgx = "[a-z_][a-z0-9_]{0,30}$"
+
+[tool.pylint.logging]
+# Formato de logging
+logging-format-style = "new"
+
+# ==================== PYTEST ====================
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+    "--cov-fail-under=70",
+    "--no-cov-on-fail",
+]
+markers = [
+    "unit: Tests unitarios (rápidos, sin BD)",
+    "integration: Tests de integración (requieren BD)",
+    "slow: Tests lentos (pueden tardar más de 1 segundo)",
+]
+
+# ==================== COVERAGE ====================
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/alembic/*",
+    "*/venv/*",
+    "*/.env*",
+    "*/__pycache__/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 70
+
+# ==================== BLACK (opcional) ====================
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | venv
+    | \.env_new
+    | _build
+    | buck-out
+    | build
+    | dist
+    | alembic
+)/
+'''
+
+# ==================== RUFF (alternativa a pylint) ====================
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    ".env_new",
+    "__pycache__",
+    "alembic",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (black handles this)
+    "B008",   # do not perform function calls in argument defaults (FastAPI Depends)
+    "B904",   # raise without from (not always needed)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+

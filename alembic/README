@@ -1,0 +1,34 @@
+Directorio de Migraciones de Alembic
+====================================
+
+Este directorio contiene las migraciones de base de datos para el Sistema de Investigaciones Vehiculares.
+
+Estructura:
+-----------
+- env.py        : Configuración del entorno de Alembic
+- script.py.mako: Template para nuevas migraciones
+- versions/     : Directorio con archivos de migración
+
+Comandos útiles:
+----------------
+# Crear nueva migración automática
+alembic revision --autogenerate -m "descripcion"
+
+# Aplicar todas las migraciones pendientes
+alembic upgrade head
+
+# Ver estado actual
+alembic current
+
+# Ver historial de migraciones
+alembic history
+
+# Revertir última migración
+alembic downgrade -1
+
+# Revertir todas las migraciones
+alembic downgrade base
+
+# Ver SQL sin ejecutar
+alembic upgrade head --sql
+
