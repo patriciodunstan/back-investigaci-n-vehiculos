@@ -8,7 +8,13 @@ services:
     pythonVersion: 3.12.7  # Especificar versión de Python explícitamente
     region: oregon  # Cambia según tu preferencia: oregon, frankfurt, singapore
     plan: free  # Cambia a starter para producción ($7/mes)
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt && alembic upgrade head
+    buildCommand: |
+      echo "📦 Instalando dependencias..." &&
+      pip install --upgrade pip setuptools wheel &&
+      pip install -r requirements.txt &&
+      echo "📊 Ejecutando migraciones de base de datos..." &&
+      alembic upgrade head &&
+      echo "✅ Build completado exitosamente"
     startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ENVIRONMENT
