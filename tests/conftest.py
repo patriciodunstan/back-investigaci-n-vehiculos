@@ -51,6 +51,10 @@ def db_session() -> Generator[Session, None, None]:
 
     try:
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
         # Eliminar todas las tablas después del test
@@ -120,8 +124,8 @@ def admin_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
     db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
-    object.__setattr__(usuario, "created_at", model.created_at)
-    object.__setattr__(usuario, "updated_at", model.updated_at)
+    object.__setattr__(usuario, "create_at", model.created_at)
+    object.__setattr__(usuario, "update_at", model.updated_at)
 
     return usuario
 
@@ -154,8 +158,8 @@ def investigador_user(db_session: Session, password_hasher: PasswordHasher) -> U
     db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
-    object.__setattr__(usuario, "created_at", model.created_at)
-    object.__setattr__(usuario, "updated_at", model.updated_at)
+    object.__setattr__(usuario, "create_at", model.created_at)
+    object.__setattr__(usuario, "update_at", model.updated_at)
 
     return usuario
 
@@ -190,8 +194,8 @@ def cliente_user(db_session: Session, password_hasher: PasswordHasher, test_buff
     db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
-    object.__setattr__(usuario, "created_at", model.created_at)
-    object.__setattr__(usuario, "updated_at", model.updated_at)
+    object.__setattr__(usuario, "create_at", model.created_at)
+    object.__setattr__(usuario, "update_at", model.updated_at)
 
     return usuario
 
@@ -225,8 +229,8 @@ def test_buffet(db_session: Session) -> Buffet:
     db_session.refresh(model)
 
     object.__setattr__(buffet, "id", model.id)
-    object.__setattr__(buffet, "created_at", model.created_at)
-    object.__setattr__(buffet, "updated_at", model.updated_at)
+    object.__setattr__(buffet, "create_at", model.created_at)
+    object.__setattr__(buffet, "update_at", model.updated_at)
 
     return buffet
 
