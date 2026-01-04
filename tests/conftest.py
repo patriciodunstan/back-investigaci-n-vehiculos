@@ -15,8 +15,12 @@ from fastapi.testclient import TestClient
 # Configurar entorno de test antes de importar
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DEBUG"] = "true"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only-min-32-chars"
+# Si DATABASE_URL no está configurado, usar SQLite en memoria
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "test-secret-key-for-testing-only-min-32-chars"
+)
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "30"
 
@@ -33,13 +37,21 @@ from src.shared.domain.value_objects import Email
 
 
 # Engine y Session para tests
-# Usar StaticPool para SQLite en memoria para que todas las conexiones compartan la misma BD
-test_engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-    echo=False,
-)
+# Usar DATABASE_URL del entorno si está disponible (CI), sino SQLite en memoria
+test_db_url = os.environ.get("DATABASE_URL", "sqlite:///:memory:")
+
+if test_db_url.startswith("sqlite"):
+    # SQLite en memoria: usar StaticPool para que todas las conexiones compartan la misma BD
+    test_engine = create_engine(
+        test_db_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False,
+    )
+else:
+    # PostgreSQL u otro: usar configuración estándar
+    test_engine = create_engine(test_db_url, echo=False)
+
 TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 
