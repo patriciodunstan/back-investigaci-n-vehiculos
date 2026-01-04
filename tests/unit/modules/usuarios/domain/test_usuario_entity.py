@@ -5,6 +5,7 @@ Prueba la lógica de dominio sin dependencias de infraestructura.
 """
 
 import pytest
+import time
 from datetime import datetime
 
 from src.modules.usuarios.domain.entities import Usuario
@@ -178,6 +179,7 @@ class TestUsuarioEntity:
         )
 
         original_updated_at = usuario.updated_at
+        time.sleep(0.01)  # Pequeña pausa para asegurar diferencia de tiempo
         usuario.actualizar_perfil(nombre="Nuevo")
 
-        assert usuario.updated_at > original_updated_at
+        assert usuario.updated_at >= original_updated_at

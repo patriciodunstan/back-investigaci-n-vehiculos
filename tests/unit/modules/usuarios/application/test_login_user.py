@@ -41,7 +41,7 @@ class TestLoginUserUseCase:
             rol=RolEnum.CLIENTE,
             activo=True,
         )
-        usuario.id = 1
+        object.__setattr__(usuario, "id", 1)
         return usuario
 
     @pytest.mark.asyncio
@@ -97,7 +97,7 @@ class TestLoginUserUseCase:
             rol=RolEnum.CLIENTE,
             activo=False,
         )
-        usuario_inactivo.id = 2
+        object.__setattr__(usuario_inactivo, "id", 2)
 
         dto = LoginDTO(email="inactivo@test.com", password="password123")
         mock_repository.get_by_email.return_value = usuario_inactivo

@@ -40,7 +40,7 @@ class TestGetCurrentUserUseCase:
             rol=RolEnum.ADMIN,
             activo=True,
         )
-        usuario.id = 1
+        object.__setattr__(usuario, "id", 1)
         return usuario
 
     @pytest.mark.asyncio
@@ -108,7 +108,7 @@ class TestGetCurrentUserUseCase:
             rol=RolEnum.CLIENTE,
             activo=False,
         )
-        usuario_inactivo.id = 2
+        object.__setattr__(usuario_inactivo, "id", 2)
 
         from src.modules.usuarios.infrastructure.services import jwt_service
 

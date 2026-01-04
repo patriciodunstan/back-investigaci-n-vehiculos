@@ -37,8 +37,8 @@ class PasswordHasher:
         Returns:
             Hash bcrypt de la contrasena
         """
-        # Convertir a bytes
-        password_bytes = password.encode("utf-8")
+        # Convertir a bytes y truncar a 72 bytes (limite de bcrypt)
+        password_bytes = password.encode("utf-8")[:72]
 
         # Generar salt y hash
         salt = bcrypt.gensalt(rounds=self._rounds)
@@ -59,7 +59,8 @@ class PasswordHasher:
             True si coinciden, False en caso contrario
         """
         try:
-            password_bytes = password.encode("utf-8")
+            # Truncar a 72 bytes para consistencia con hash
+            password_bytes = password.encode("utf-8")[:72]
             hash_bytes = password_hash.encode("utf-8")
             return bcrypt.checkpw(password_bytes, hash_bytes)
         except Exception:

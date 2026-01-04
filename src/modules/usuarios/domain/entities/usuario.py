@@ -107,6 +107,11 @@ class Usuario(BaseEntity):
         self.activo = True
         self.marcar_actualizado()
 
+    def cambiar_contrasena(self, nuevo_hash: str) -> None:
+        """Cambia el hash de la contraseña."""
+        self.password_hash = nuevo_hash
+        self.marcar_actualizado()
+
     def cambiar_rol(self, nuevo_rol: RolEnum, buffet_id: Optional[int] = None) -> None:
         """
         Cambia el rol del usuario.
