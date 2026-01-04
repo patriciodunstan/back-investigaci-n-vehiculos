@@ -34,7 +34,10 @@ boto3==1.34.34
 pillow==10.4.0
 
 # ==================== EXCEL ====================
-pandas==2.2.0
+# pandas solo se necesita si se exportan datos a Excel
+# Comentado temporalmente debido a problemas de compilación con Python 3.13
+# Descomentar cuando se necesite funcionalidad de Excel
+# pandas==2.2.1
 openpyxl==3.1.2
 
 # ==================== DESARROLLO ====================
