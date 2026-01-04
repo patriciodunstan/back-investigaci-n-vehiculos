@@ -5,10 +5,14 @@ services:
   - type: web
     name: investigaciones-backend
     env: python
-    pythonVersion: 3.12.7  # Especificar versión de Python explícitamente
+    # CRÍTICO: Render debe usar Python 3.12, no 3.13
+    # Configura esto también en el dashboard de Render: Settings → Environment → Python Version
+    pythonVersion: 3.12.7
     region: oregon  # Cambia según tu preferencia: oregon, frankfurt, singapore
     plan: free  # Cambia a starter para producción ($7/mes)
     buildCommand: |
+      echo "🐍 Verificando versión de Python..." &&
+      python --version &&
       echo "📦 Instalando dependencias..." &&
       pip install --upgrade pip setuptools wheel &&
       pip install -r requirements.txt &&
