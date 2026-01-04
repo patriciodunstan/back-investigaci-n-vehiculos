@@ -3,8 +3,9 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 
 # ==================== VALIDACIÓN Y SETTINGS ====================
-pydantic==2.5.3
-pydantic-settings==2.1.0
+# Usar versiones con wheels precompilados para evitar compilación
+pydantic==2.10.0
+pydantic-settings==2.6.1
 email-validator==2.1.0
 
 # ==================== DATABASE ====================
