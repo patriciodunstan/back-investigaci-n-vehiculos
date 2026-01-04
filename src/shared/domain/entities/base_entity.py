@@ -38,7 +38,7 @@ class BaseEntity(ABC):
 
     def marcar_actualizado(self) -> None:
         """Actualiza el timestamp de modificación"""
-        object.__setattr__(self, "update_at", datetime.now)
+        object.__setattr__(self, "update_at", datetime.now())
 
     def es_nuevo(self) -> bool:
         """

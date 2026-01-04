@@ -119,9 +119,9 @@ def admin_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
     db_session.flush()
     db_session.refresh(model)
 
-    usuario.id = model.id
-    usuario.created_at = model.created_at
-    usuario.updated_at = model.updated_at
+    object.__setattr__(usuario, "id", model.id)
+    object.__setattr__(usuario, "created_at", model.created_at)
+    object.__setattr__(usuario, "updated_at", model.updated_at)
 
     return usuario
 
@@ -153,9 +153,9 @@ def investigador_user(db_session: Session, password_hasher: PasswordHasher) -> U
     db_session.flush()
     db_session.refresh(model)
 
-    usuario.id = model.id
-    usuario.created_at = model.created_at
-    usuario.updated_at = model.updated_at
+    object.__setattr__(usuario, "id", model.id)
+    object.__setattr__(usuario, "created_at", model.created_at)
+    object.__setattr__(usuario, "updated_at", model.updated_at)
 
     return usuario
 
@@ -189,9 +189,9 @@ def cliente_user(db_session: Session, password_hasher: PasswordHasher, test_buff
     db_session.flush()
     db_session.refresh(model)
 
-    usuario.id = model.id
-    usuario.created_at = model.created_at
-    usuario.updated_at = model.updated_at
+    object.__setattr__(usuario, "id", model.id)
+    object.__setattr__(usuario, "created_at", model.created_at)
+    object.__setattr__(usuario, "updated_at", model.updated_at)
 
     return usuario
 
@@ -224,9 +224,9 @@ def test_buffet(db_session: Session) -> Buffet:
     db_session.flush()
     db_session.refresh(model)
 
-    buffet.id = model.id
-    buffet.created_at = model.created_at
-    buffet.updated_at = model.updated_at
+    object.__setattr__(buffet, "id", model.id)
+    object.__setattr__(buffet, "created_at", model.created_at)
+    object.__setattr__(buffet, "updated_at", model.updated_at)
 
     return buffet
 

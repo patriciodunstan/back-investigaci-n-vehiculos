@@ -56,13 +56,8 @@ class Usuario(BaseEntity):
         if self.rol == RolEnum.CLIENTE and self.buffet_id is None:
             # Solo advertencia, puede asignarse despues
             pass
-        elif (
-            self.rol in (RolEnum.ADMIN, RolEnum.INVESTIGADOR)
-            and self.buffet_id is not None
-        ):
-            raise ValueError(
-                f"Usuario con rol {self.rol.value} no debe tener buffet_id asignado"
-            )
+        elif self.rol in (RolEnum.ADMIN, RolEnum.INVESTIGADOR) and self.buffet_id is not None:
+            raise ValueError(f"Usuario con rol {self.rol.value} no debe tener buffet_id asignado")
 
     @classmethod
     def crear(
@@ -72,6 +67,7 @@ class Usuario(BaseEntity):
         password_hash: str,
         rol: RolEnum = RolEnum.CLIENTE,
         buffet_id: Optional[int] = None,
+        activo: bool = True,
     ) -> "Usuario":
         """
         Factory method para crear un nuevo usuario.
@@ -82,6 +78,7 @@ class Usuario(BaseEntity):
             password_hash: Hash de la contrasena
             rol: Rol del usuario
             buffet_id: ID del buffet (solo para clientes)
+            activo: Si el usuario esta activo (default: True)
 
         Returns:
             Nueva instancia de Usuario
@@ -97,7 +94,7 @@ class Usuario(BaseEntity):
             password_hash=password_hash,
             rol=rol,
             buffet_id=buffet_id,
-            activo=True,
+            activo=activo,
         )
 
     def desactivar(self) -> None:
@@ -172,6 +169,4 @@ class Usuario(BaseEntity):
         return self.update_at
 
     def __repr__(self) -> str:
-        return (
-            f"<Usuario(id={self.id}, email='{self.email_str}', rol='{self.rol.value}')>"
-        )
+        return f"<Usuario(id={self.id}, email='{self.email_str}', rol='{self.rol.value}')>"
