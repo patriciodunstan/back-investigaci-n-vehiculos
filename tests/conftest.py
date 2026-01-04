@@ -8,6 +8,7 @@ import os
 import pytest
 from typing import Generator
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient
 
@@ -32,7 +33,13 @@ from src.shared.domain.value_objects import Email
 
 
 # Engine y Session para tests
-test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+# Usar StaticPool para SQLite en memoria para que todas las conexiones compartan la misma BD
+test_engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=False,
+)
 TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 
