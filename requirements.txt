@@ -12,7 +12,9 @@ email-validator==2.1.0
 # SQLAlchemy 2.0.36+ tiene mejor compatibilidad con Python 3.13
 sqlalchemy==2.0.36
 alembic==1.13.1
-psycopg2-binary==2.9.9
+# psycopg2-binary 2.9.10+ tiene mejor soporte para Python 3.13
+# PERO se recomienda usar Python 3.12 para evitar problemas
+psycopg2-binary==2.9.10
 # asyncpg==0.29.0  # Comentado - no se usa en el código, solo SQLAlchemy con psycopg2-binary
 
 # ==================== AUTENTICACIÓN ====================

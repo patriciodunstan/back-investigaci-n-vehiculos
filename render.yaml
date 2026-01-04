@@ -13,6 +13,7 @@ services:
     buildCommand: |
       echo "🐍 Verificando versión de Python..." &&
       python --version &&
+      python -c "import sys; assert sys.version_info[:2] == (3, 12), f'ERROR: Se requiere Python 3.12, pero se está usando {sys.version}'; print('✅ Python 3.12 detectado correctamente')" &&
       echo "📦 Instalando dependencias..." &&
       pip install --upgrade pip setuptools wheel &&
       pip install -r requirements.txt &&
