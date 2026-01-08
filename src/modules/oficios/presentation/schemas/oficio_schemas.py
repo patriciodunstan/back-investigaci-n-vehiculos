@@ -11,6 +11,7 @@ from src.shared.domain.enums import (
     PrioridadEnum,
     TipoPropietarioEnum,
     TipoDireccionEnum,
+    ResultadoVerificacionEnum,
 )
 
 
@@ -45,6 +46,41 @@ class DireccionRequest(BaseModel):
     region: Optional[str] = Field(None, max_length=100)
     tipo: TipoDireccionEnum = TipoDireccionEnum.DOMICILIO
     notas: Optional[str] = None
+
+
+class RegistrarVisitaRequest(BaseModel):
+    """Schema para registrar una visita a una dirección."""
+
+    resultado: ResultadoVerificacionEnum = Field(
+        ..., 
+        description="Resultado de la visita"
+    )
+    notas: Optional[str] = Field(
+        None, 
+        max_length=2000,
+        description="Notas sobre la visita"
+    )
+    latitud: Optional[str] = Field(
+        None, 
+        max_length=20,
+        description="Latitud GPS de la visita"
+    )
+    longitud: Optional[str] = Field(
+        None, 
+        max_length=20,
+        description="Longitud GPS de la visita"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "resultado": "no_encontrado",
+                "notas": "Se visitó a las 15:00, nadie respondió",
+                "latitud": "-33.4489",
+                "longitud": "-70.6693",
+            }
+        }
+    )
 
 
 class CreateOficioRequest(BaseModel):
@@ -133,6 +169,22 @@ class PropietarioResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class VisitaDireccionResponse(BaseModel):
+    """Schema de respuesta para una visita a dirección."""
+
+    id: int
+    direccion_id: int
+    investigador_id: Optional[int]
+    investigador_nombre: Optional[str] = None
+    fecha_visita: datetime
+    resultado: str
+    notas: Optional[str]
+    latitud: Optional[str]
+    longitud: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class DireccionResponse(BaseModel):
     """Schema de respuesta para direccion."""
 
@@ -142,7 +194,11 @@ class DireccionResponse(BaseModel):
     region: Optional[str]
     tipo: str
     verificada: bool
+    resultado_verificacion: str = "pendiente"
     fecha_verificacion: Optional[datetime]
+    verificada_por_id: Optional[int] = None
+    verificada_por_nombre: Optional[str] = None
+    cantidad_visitas: int = 0
     notas: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)

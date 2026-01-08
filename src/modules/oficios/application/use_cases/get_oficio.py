@@ -54,6 +54,18 @@ class GetOficioUseCase:
         direcciones_dto = []
         if hasattr(oficio, "direcciones"):
             for d in oficio.direcciones:
+                verificada_por_nombre = None
+                if hasattr(d, "verificada_por") and d.verificada_por:
+                    verificada_por_nombre = d.verificada_por.nombre
+                
+                resultado_verificacion = "pendiente"
+                if hasattr(d, "resultado_verificacion") and d.resultado_verificacion:
+                    resultado_verificacion = (
+                        d.resultado_verificacion.value
+                        if hasattr(d.resultado_verificacion, "value")
+                        else str(d.resultado_verificacion)
+                    )
+                
                 direcciones_dto.append(
                     DireccionResponseDTO(
                         id=d.id,
@@ -62,7 +74,11 @@ class GetOficioUseCase:
                         region=d.region,
                         tipo=d.tipo.value if hasattr(d.tipo, "value") else str(d.tipo),
                         verificada=d.verificada,
+                        resultado_verificacion=resultado_verificacion,
                         fecha_verificacion=d.fecha_verificacion,
+                        verificada_por_id=getattr(d, "verificada_por_id", None),
+                        verificada_por_nombre=verificada_por_nombre,
+                        cantidad_visitas=getattr(d, "cantidad_visitas", 0) or 0,
                         notas=d.notas,
                     )
                 )

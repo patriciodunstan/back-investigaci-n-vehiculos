@@ -14,6 +14,9 @@ from src.modules.oficios.infrastructure.models import (
     PropietarioModel,
     DireccionModel,
 )
+from src.modules.oficios.infrastructure.models.direccion_model import (
+    VisitaDireccionModel,
+)
 from src.shared.domain.enums import EstadoOficioEnum
 
 
@@ -136,3 +139,40 @@ class OficioRepository(IOficioRepository):
         self._session.add(direccion)
         self._session.flush()
         return direccion
+
+    async def get_direccion_by_id(self, direccion_id: int) -> Optional[DireccionModel]:
+        """Obtiene una dirección por su ID."""
+        stmt = (
+            select(DireccionModel)
+            .where(DireccionModel.id == direccion_id)
+            .options(
+                joinedload(DireccionModel.oficio),
+                joinedload(DireccionModel.verificada_por),
+            )
+        )
+        result = self._session.execute(stmt)
+        return result.unique().scalar_one_or_none()
+
+    async def update_direccion(self, direccion: DireccionModel) -> DireccionModel:
+        """Actualiza una dirección."""
+        self._session.flush()
+        return direccion
+
+    async def add_visita(self, visita: VisitaDireccionModel) -> VisitaDireccionModel:
+        """Agrega una visita a una dirección."""
+        self._session.add(visita)
+        self._session.flush()
+        return visita
+
+    async def get_visitas_by_direccion(
+        self, direccion_id: int
+    ) -> List[VisitaDireccionModel]:
+        """Obtiene el historial de visitas de una dirección."""
+        stmt = (
+            select(VisitaDireccionModel)
+            .where(VisitaDireccionModel.direccion_id == direccion_id)
+            .options(joinedload(VisitaDireccionModel.investigador))
+            .order_by(VisitaDireccionModel.fecha_visita.desc())
+        )
+        result = self._session.execute(stmt)
+        return list(result.unique().scalars().all())

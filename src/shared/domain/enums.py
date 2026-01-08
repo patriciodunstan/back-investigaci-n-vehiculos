@@ -72,6 +72,20 @@ class TipoDireccionEnum(str, Enum):
     OTRO = "otro"  # Otra dirección
 
 
+class ResultadoVerificacionEnum(str, Enum):
+    """
+    Resultado de la verificación de una dirección en terreno.
+    """
+
+    PENDIENTE = "pendiente"  # No ha sido visitada
+    EXITOSA = "exitosa"  # Se encontró al propietario/vehículo
+    NO_ENCONTRADO = "no_encontrado"  # Nadie en el domicilio
+    DIRECCION_INCORRECTA = "direccion_incorrecta"  # La dirección no existe o es errónea
+    SE_MUDO = "se_mudo"  # El propietario ya no vive ahí
+    RECHAZO_ATENCION = "rechazo_atencion"  # Se negaron a atender
+    OTRO = "otro"  # Otro resultado
+
+
 class TipoActividadEnum(str, Enum):
     """
     Tipos de actividad en la investigación (timeline).

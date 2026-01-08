@@ -142,7 +142,9 @@ class AgregarDireccionUseCase:
     def __init__(self, repository: IOficioRepository):
         self._repository = repository
 
-    async def execute(self, oficio_id: int, dto: DireccionDTO) -> DireccionResponseDTO:
+    async def execute(
+        self, oficio_id: int, dto: DireccionDTO, agregada_por_id: int = None
+    ) -> DireccionResponseDTO:
         """Agrega una direccion a un oficio."""
         oficio = await self._repository.get_by_id(oficio_id)
         if oficio is None:
@@ -155,6 +157,7 @@ class AgregarDireccionUseCase:
             region=dto.region,
             tipo=dto.tipo,
             notas=dto.notas,
+            agregada_por_id=agregada_por_id,
         )
 
         dir_creada = await self._repository.add_direccion(direccion)
@@ -166,6 +169,10 @@ class AgregarDireccionUseCase:
             region=dir_creada.region,
             tipo=dir_creada.tipo.value,
             verificada=dir_creada.verificada,
+            resultado_verificacion=dir_creada.resultado_verificacion.value,
             fecha_verificacion=dir_creada.fecha_verificacion,
+            verificada_por_id=dir_creada.verificada_por_id,
+            verificada_por_nombre=None,
+            cantidad_visitas=dir_creada.cantidad_visitas or 0,
             notas=dir_creada.notas,
         )

@@ -28,7 +28,7 @@ from src.shared.infrastructure.database.models_registry import *  # noqa: F401, 
 from src.modules.usuarios.presentation import auth_router
 from src.modules.buffets.presentation import buffet_router
 from src.modules.oficios.presentation import oficio_router
-from src.modules.investigaciones.presentation import investigacion_router
+from src.modules.investigaciones.presentation import investigacion_router, boostr_router
 from src.modules.notificaciones.presentation import notificacion_router
 
 
@@ -123,6 +123,10 @@ app.include_router(
 )
 app.include_router(
     investigacion_router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    boostr_router,
     prefix=settings.API_V1_STR,
 )
 app.include_router(

@@ -13,6 +13,8 @@ from .oficio_schemas import (
     DireccionResponse,
     OficioResponse,
     OficioListResponse,
+    RegistrarVisitaRequest,
+    VisitaDireccionResponse,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "DireccionResponse",
     "OficioResponse",
     "OficioListResponse",
+    "RegistrarVisitaRequest",
+    "VisitaDireccionResponse",
 ]

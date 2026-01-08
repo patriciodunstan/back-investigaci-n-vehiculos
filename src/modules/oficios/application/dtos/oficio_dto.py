@@ -11,6 +11,7 @@ from src.shared.domain.enums import (
     PrioridadEnum,
     TipoPropietarioEnum,
     TipoDireccionEnum,
+    ResultadoVerificacionEnum,
 )
 
 
@@ -124,8 +125,37 @@ class DireccionResponseDTO:
     region: Optional[str]
     tipo: str
     verificada: bool
+    resultado_verificacion: str
     fecha_verificacion: Optional[datetime]
+    verificada_por_id: Optional[int]
+    verificada_por_nombre: Optional[str]
+    cantidad_visitas: int
     notas: Optional[str]
+
+
+@dataclass
+class VisitaDireccionDTO:
+    """DTO para registrar una visita a dirección."""
+
+    resultado: ResultadoVerificacionEnum
+    notas: Optional[str] = None
+    latitud: Optional[str] = None
+    longitud: Optional[str] = None
+
+
+@dataclass
+class VisitaDireccionResponseDTO:
+    """DTO de respuesta para una visita."""
+
+    id: int
+    direccion_id: int
+    investigador_id: Optional[int]
+    investigador_nombre: Optional[str]
+    fecha_visita: datetime
+    resultado: str
+    notas: Optional[str]
+    latitud: Optional[str]
+    longitud: Optional[str]
 
 
 @dataclass

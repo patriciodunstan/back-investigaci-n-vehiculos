@@ -12,6 +12,8 @@ from .oficio_dto import (
     PropietarioResponseDTO,
     DireccionResponseDTO,
     OficioResponseDTO,
+    VisitaDireccionDTO,
+    VisitaDireccionResponseDTO,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "PropietarioResponseDTO",
     "DireccionResponseDTO",
     "OficioResponseDTO",
+    "VisitaDireccionDTO",
+    "VisitaDireccionResponseDTO",
 ]

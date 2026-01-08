@@ -37,6 +37,7 @@ from src.modules.oficios.infrastructure.models.propietario_model import (
 )  # noqa: F401
 from src.modules.oficios.infrastructure.models.direccion_model import (
     DireccionModel,
+    VisitaDireccionModel,
 )  # noqa: F401
 from src.modules.oficios.infrastructure.models.adjunto_model import (
     AdjuntoModel,

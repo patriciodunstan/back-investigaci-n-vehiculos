@@ -62,9 +62,10 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: Optional[str] = None
 
-    BOOSTR_API_URL: str = ""
+    # Boostr API (https://docs.boostr.cl/reference)
+    BOOSTR_API_URL: str = "https://api.boostr.cl"
     BOOSTR_API_KEY: str = ""
-    BOOST_TIMEOUT: int = 30
+    BOOSTR_TIMEOUT: int = 30
 
     CELERITY_BROKER_URL: Optional[str] = None
     CELERITY_RESULT_BACKEND: Optional[str] = None

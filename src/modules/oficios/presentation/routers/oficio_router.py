@@ -18,6 +18,7 @@ from src.modules.oficios.application.dtos import (
     PropietarioDTO,
     DireccionDTO,
     VehiculoDTO,
+    VisitaDireccionDTO,
 )
 from src.modules.oficios.application.use_cases import (
     CreateOficioUseCase,
@@ -28,10 +29,16 @@ from src.modules.oficios.application.use_cases import (
     AgregarPropietarioUseCase,
     AgregarDireccionUseCase,
 )
+from src.modules.oficios.application.use_cases.registrar_visita import (
+    RegistrarVisitaUseCase,
+    GetHistorialVisitasUseCase,
+    GetDireccionesPendientesUseCase,
+)
 from src.modules.oficios.infrastructure.repositories import OficioRepository
 from src.modules.oficios.domain.exceptions import (
     OficioNotFoundException,
     NumeroOficioAlreadyExistsException,
+    DireccionNotFoundException,
 )
 from src.modules.oficios.presentation.schemas import (
     CreateOficioRequest,
@@ -40,10 +47,12 @@ from src.modules.oficios.presentation.schemas import (
     CambiarEstadoRequest,
     PropietarioRequest,
     DireccionRequest,
+    RegistrarVisitaRequest,
     OficioResponse,
     OficioListResponse,
     PropietarioResponse,
     DireccionResponse,
+    VisitaDireccionResponse,
     VehiculoResponse,
 )
 from src.modules.usuarios.presentation.routers import get_current_user
@@ -382,8 +391,149 @@ async def add_direccion(
             comuna=result.comuna,
             region=result.region,
             verificada=result.verificada,
+            resultado_verificacion=result.resultado_verificacion,
             fecha_verificacion=result.fecha_verificacion,
+            verificada_por_id=result.verificada_por_id,
+            verificada_por_nombre=result.verificada_por_nombre,
+            cantidad_visitas=result.cantidad_visitas,
             notas=result.notas,
         )
     except OficioNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+# =============================================================================
+# ENDPOINTS DE VISITAS A DIRECCIONES
+# =============================================================================
+
+@router.post(
+    "/direcciones/{direccion_id}/visitas",
+    response_model=VisitaDireccionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar visita a dirección",
+)
+async def registrar_visita(
+    direccion_id: int,
+    request: RegistrarVisitaRequest,
+    repository: OficioRepository = Depends(get_oficio_repository),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Registra una visita a una dirección.
+    
+    Actualiza el estado de verificación de la dirección y guarda
+    la visita en el historial.
+    
+    Resultados posibles:
+    - `exitosa`: Se encontró al propietario/vehículo
+    - `no_encontrado`: Nadie en el domicilio
+    - `direccion_incorrecta`: La dirección no existe o es errónea
+    - `se_mudo`: El propietario ya no vive ahí
+    - `rechazo_atencion`: Se negaron a atender
+    - `otro`: Otro resultado
+    """
+    use_case = RegistrarVisitaUseCase(repository)
+
+    dto = VisitaDireccionDTO(
+        resultado=request.resultado,
+        notas=request.notas,
+        latitud=request.latitud,
+        longitud=request.longitud,
+    )
+
+    try:
+        result = await use_case.execute(
+            direccion_id=direccion_id,
+            dto=dto,
+            investigador_id=current_user.id,
+        )
+        return VisitaDireccionResponse(
+            id=result.id,
+            direccion_id=result.direccion_id,
+            investigador_id=result.investigador_id,
+            investigador_nombre=result.investigador_nombre,
+            fecha_visita=result.fecha_visita,
+            resultado=result.resultado,
+            notas=result.notas,
+            latitud=result.latitud,
+            longitud=result.longitud,
+        )
+    except DireccionNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+@router.get(
+    "/direcciones/{direccion_id}/visitas",
+    response_model=list[VisitaDireccionResponse],
+    summary="Historial de visitas a dirección",
+)
+async def get_historial_visitas(
+    direccion_id: int,
+    repository: OficioRepository = Depends(get_oficio_repository),
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Obtiene el historial de visitas a una dirección.
+    
+    Retorna todas las visitas ordenadas por fecha (más reciente primero).
+    """
+    use_case = GetHistorialVisitasUseCase(repository)
+
+    try:
+        visitas = await use_case.execute(direccion_id)
+        return [
+            VisitaDireccionResponse(
+                id=v.id,
+                direccion_id=v.direccion_id,
+                investigador_id=v.investigador_id,
+                investigador_nombre=v.investigador_nombre,
+                fecha_visita=v.fecha_visita,
+                resultado=v.resultado,
+                notas=v.notas,
+                latitud=v.latitud,
+                longitud=v.longitud,
+            )
+            for v in visitas
+        ]
+    except DireccionNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+@router.get(
+    "/{oficio_id}/direcciones/pendientes",
+    response_model=list[DireccionResponse],
+    summary="Direcciones pendientes de verificar",
+)
+async def get_direcciones_pendientes(
+    oficio_id: int,
+    repository: OficioRepository = Depends(get_oficio_repository),
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Obtiene las direcciones de un oficio que requieren verificación.
+    
+    Incluye:
+    - Direcciones nunca visitadas (pendiente)
+    - Direcciones con resultado no_encontrado (intentar de nuevo)
+    - Direcciones con rechazo de atención (intentar de nuevo)
+    """
+    use_case = GetDireccionesPendientesUseCase(repository)
+    direcciones = await use_case.execute(oficio_id)
+    
+    return [
+        DireccionResponse(
+            id=d.id,
+            direccion=d.direccion,
+            tipo=d.tipo,
+            comuna=d.comuna,
+            region=d.region,
+            verificada=d.verificada,
+            resultado_verificacion=d.resultado_verificacion,
+            fecha_verificacion=d.fecha_verificacion,
+            verificada_por_id=d.verificada_por_id,
+            verificada_por_nombre=d.verificada_por_nombre,
+            cantidad_visitas=d.cantidad_visitas,
+            notas=d.notas,
+        )
+        for d in direcciones
+    ]

@@ -11,6 +11,9 @@ from src.modules.oficios.infrastructure.models import (
     PropietarioModel,
     DireccionModel,
 )
+from src.modules.oficios.infrastructure.models.direccion_model import (
+    VisitaDireccionModel,
+)
 from src.shared.domain.enums import EstadoOficioEnum
 
 
@@ -77,4 +80,26 @@ class IOficioRepository(ABC):
     @abstractmethod
     async def add_direccion(self, direccion: DireccionModel) -> DireccionModel:
         """Agrega una direccion."""
+        pass
+
+    @abstractmethod
+    async def get_direccion_by_id(self, direccion_id: int) -> Optional[DireccionModel]:
+        """Obtiene una dirección por su ID."""
+        pass
+
+    @abstractmethod
+    async def update_direccion(self, direccion: DireccionModel) -> DireccionModel:
+        """Actualiza una dirección."""
+        pass
+
+    @abstractmethod
+    async def add_visita(self, visita: VisitaDireccionModel) -> VisitaDireccionModel:
+        """Agrega una visita a una dirección."""
+        pass
+
+    @abstractmethod
+    async def get_visitas_by_direccion(
+        self, direccion_id: int
+    ) -> List[VisitaDireccionModel]:
+        """Obtiene el historial de visitas de una dirección."""
         pass

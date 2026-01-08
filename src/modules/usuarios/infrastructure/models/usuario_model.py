@@ -96,7 +96,21 @@ class UsuarioModel(Base):
         "AdjuntoModel", back_populates="investigador", lazy="dynamic"
     )
     direcciones_agregadas = relationship(
-        "DireccionModel", back_populates="agregada_por", lazy="dynamic"
+        "DireccionModel",
+        foreign_keys="DireccionModel.agregada_por_id",
+        back_populates="agregada_por",
+        lazy="dynamic",
+    )
+    direcciones_verificadas = relationship(
+        "DireccionModel",
+        foreign_keys="DireccionModel.verificada_por_id",
+        back_populates="verificada_por",
+        lazy="dynamic",
+    )
+    visitas_realizadas = relationship(
+        "VisitaDireccionModel",
+        back_populates="investigador",
+        lazy="dynamic",
     )
 
     def __repr__(self) -> str:
