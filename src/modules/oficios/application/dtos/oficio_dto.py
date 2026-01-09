@@ -173,7 +173,7 @@ class OficioResponseDTO:
     fecha_ingreso: date
     fecha_limite: Optional[date]
     notas_generales: Optional[str]
-    vehiculo: Optional[VehiculoResponseDTO]
+    vehiculos: List[VehiculoResponseDTO]
     propietarios: List[PropietarioResponseDTO]
     direcciones: List[DireccionResponseDTO]
     created_at: datetime

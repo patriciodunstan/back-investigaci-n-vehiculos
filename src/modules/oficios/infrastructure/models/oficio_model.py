@@ -33,7 +33,7 @@ class OficioModel(Base):
     Relationships:
         buffet: Buffet que solicitó la investigación
         investigador: Usuario investigador asignado
-        vehiculo: Vehículo a investigar (1:1)
+        vehiculos: Vehículos a investigar (1:N)
         propietarios: Propietarios del vehículo
         direcciones: Direcciones a verificar
         investigaciones: Timeline de actividades
@@ -103,10 +103,9 @@ class OficioModel(Base):
         foreign_keys=[investigador_id],
         lazy="joined",
     )
-    vehiculo = relationship(
+    vehiculos = relationship(
         "VehiculoModel",
         back_populates="oficio",
-        uselist=False,  # Relación 1:1
         lazy="joined",
         cascade="all, delete-orphan",
     )

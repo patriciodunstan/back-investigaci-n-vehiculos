@@ -218,7 +218,7 @@ class OficioResponse(BaseModel):
     fecha_ingreso: date
     fecha_limite: Optional[date]
     notas_generales: Optional[str]
-    vehiculo: Optional[VehiculoResponse]
+    vehiculos: List[VehiculoResponse]
     propietarios: List[PropietarioResponse]
     direcciones: List[DireccionResponse]
     created_at: datetime

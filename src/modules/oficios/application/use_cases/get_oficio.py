@@ -23,17 +23,20 @@ class GetOficioUseCase:
 
     def _model_to_dto(self, oficio) -> OficioResponseDTO:
         """Convierte modelo a DTO."""
-        vehiculo_dto = None
-        if oficio.vehiculo:
-            vehiculo_dto = VehiculoResponseDTO(
-                id=oficio.vehiculo.id,
-                patente=oficio.vehiculo.patente,
-                marca=oficio.vehiculo.marca,
-                modelo=oficio.vehiculo.modelo,
-                año=oficio.vehiculo.año,
-                color=oficio.vehiculo.color,
-                vin=oficio.vehiculo.vin,
-            )
+        vehiculos_dto = []
+        if hasattr(oficio, "vehiculos"):
+            for v in oficio.vehiculos:
+                vehiculos_dto.append(
+                    VehiculoResponseDTO(
+                        id=v.id,
+                        patente=v.patente,
+                        marca=v.marca,
+                        modelo=v.modelo,
+                        año=v.año,
+                        color=v.color,
+                        vin=v.vin,
+                    )
+                )
 
         propietarios_dto = []
         if hasattr(oficio, "propietarios"):
@@ -107,7 +110,7 @@ class GetOficioUseCase:
             fecha_ingreso=oficio.fecha_ingreso,
             fecha_limite=oficio.fecha_limite,
             notas_generales=oficio.notas_generales,
-            vehiculo=vehiculo_dto,
+            vehiculos=vehiculos_dto,
             propietarios=propietarios_dto,
             direcciones=direcciones_dto,
             created_at=oficio.created_at,

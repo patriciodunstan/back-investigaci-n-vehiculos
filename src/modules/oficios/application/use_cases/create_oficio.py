@@ -96,15 +96,17 @@ class CreateOficioUseCase:
             fecha_ingreso=oficio_creado.fecha_ingreso,
             fecha_limite=oficio_creado.fecha_limite,
             notas_generales=oficio_creado.notas_generales,
-            vehiculo=VehiculoResponseDTO(
-                id=vehiculo_creado.id,
-                patente=vehiculo_creado.patente,
-                marca=vehiculo_creado.marca,
-                modelo=vehiculo_creado.modelo,
-                año=vehiculo_creado.año,
-                color=vehiculo_creado.color,
-                vin=vehiculo_creado.vin,
-            ),
+            vehiculos=[
+                VehiculoResponseDTO(
+                    id=vehiculo_creado.id,
+                    patente=vehiculo_creado.patente,
+                    marca=vehiculo_creado.marca,
+                    modelo=vehiculo_creado.modelo,
+                    año=vehiculo_creado.año,
+                    color=vehiculo_creado.color,
+                    vin=vehiculo_creado.vin,
+                )
+            ],
             propietarios=[
                 PropietarioResponseDTO(
                     id=p.id,
@@ -126,7 +128,11 @@ class CreateOficioUseCase:
                     region=d.region,
                     tipo=d.tipo.value,
                     verificada=d.verificada,
+                    resultado_verificacion=d.resultado_verificacion.value if hasattr(d.resultado_verificacion, 'value') else str(d.resultado_verificacion),
                     fecha_verificacion=d.fecha_verificacion,
+                    verificada_por_id=getattr(d, 'verificada_por_id', None),
+                    verificada_por_nombre=None,
+                    cantidad_visitas=getattr(d, 'cantidad_visitas', 0) or 0,
                     notas=d.notas,
                 )
                 for d in direcciones_creadas

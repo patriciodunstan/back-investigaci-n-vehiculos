@@ -19,7 +19,7 @@ class VehiculoModel(Base):
     Modelo de base de datos para vehículos.
 
     Attributes:
-        oficio_id: FK al oficio (relación 1:1, único)
+        oficio_id: FK al oficio (relación 1:N)
         patente: Patente del vehículo (ej: "ABCD12")
         marca: Marca del vehículo (ej: "Toyota")
         modelo: Modelo del vehículo (ej: "Corolla")
@@ -33,14 +33,13 @@ class VehiculoModel(Base):
 
     __tablename__ = "vehiculos"
 
-    # Relación 1:1 con Oficio
+    # Relación 1:N con Oficio (un oficio puede tener múltiples vehículos)
     oficio_id = Column(
         Integer,
         ForeignKey("oficios.id", ondelete="CASCADE"),
-        unique=True,  # Garantiza relación 1:1
         nullable=False,
         index=True,
-        comment="ID del oficio (relación 1:1)",
+        comment="ID del oficio (relación 1:N)",
     )
 
     # Datos del vehículo
@@ -56,7 +55,7 @@ class VehiculoModel(Base):
     )
 
     # Relación
-    oficio = relationship("OficioModel", back_populates="vehiculo", lazy="joined")
+    oficio = relationship("OficioModel", back_populates="vehiculos", lazy="joined")
 
     def __repr__(self) -> str:
         return f"<VehiculoModel(id={self.id}, patente='{self.patente}', marca='{self.marca}')>"

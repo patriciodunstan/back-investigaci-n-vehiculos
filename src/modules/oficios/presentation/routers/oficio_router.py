@@ -69,17 +69,18 @@ def get_oficio_repository(db: Session = Depends(get_db)) -> OficioRepository:
 
 def _dto_to_response(dto) -> OficioResponse:
     """Convierte DTO a response."""
-    vehiculo = None
-    if dto.vehiculo:
-        vehiculo = VehiculoResponse(
-            id=dto.vehiculo.id,
-            patente=dto.vehiculo.patente,
-            marca=dto.vehiculo.marca,
-            modelo=dto.vehiculo.modelo,
-            año=dto.vehiculo.año,
-            color=dto.vehiculo.color,
-            vin=dto.vehiculo.vin,
+    vehiculos = [
+        VehiculoResponse(
+            id=v.id,
+            patente=v.patente,
+            marca=v.marca,
+            modelo=v.modelo,
+            año=v.año,
+            color=v.color,
+            vin=v.vin,
         )
+        for v in dto.vehiculos
+    ]
 
     propietarios = [
         PropietarioResponse(
@@ -123,7 +124,7 @@ def _dto_to_response(dto) -> OficioResponse:
         notas_generales=dto.notas_generales,
         created_at=dto.created_at,
         updated_at=dto.updated_at,
-        vehiculo=vehiculo,
+        vehiculos=vehiculos,
         propietarios=propietarios,
         direcciones=direcciones,
     )

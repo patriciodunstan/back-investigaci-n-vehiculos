@@ -34,7 +34,7 @@ class OficioRepository(IOficioRepository):
             .options(
                 joinedload(OficioModel.buffet),
                 joinedload(OficioModel.investigador),
-                joinedload(OficioModel.vehiculo),
+                joinedload(OficioModel.vehiculos),
             )
         )
         result = self._session.execute(stmt)
