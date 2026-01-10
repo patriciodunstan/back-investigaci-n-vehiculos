@@ -87,7 +87,7 @@ class OficioRepository(IOficioRepository):
         stmt = select(OficioModel).options(
             joinedload(OficioModel.buffet),
             joinedload(OficioModel.investigador),
-            joinedload(OficioModel.vehiculo),
+            joinedload(OficioModel.vehiculos),
         )
 
         if buffet_id is not None:

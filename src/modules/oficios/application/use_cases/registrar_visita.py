@@ -58,7 +58,7 @@ class RegistrarVisitaUseCase:
         # Crear el registro de visita
         visita = VisitaDireccionModel(
             direccion_id=direccion_id,
-            investigador_id=investigador_id,
+            usuario_id=investigador_id,
             fecha_visita=datetime.utcnow(),
             resultado=dto.resultado,
             notas=dto.notas,
@@ -93,7 +93,7 @@ class RegistrarVisitaUseCase:
         return VisitaDireccionResponseDTO(
             id=visita.id,
             direccion_id=visita.direccion_id,
-            investigador_id=visita.investigador_id,
+            investigador_id=visita.usuario_id,
             investigador_nombre=investigador_nombre,
             fecha_visita=visita.fecha_visita,
             resultado=visita.resultado.value,

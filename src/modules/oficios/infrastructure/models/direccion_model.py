@@ -164,7 +164,7 @@ class VisitaDireccionModel(Base):
     )
 
     # Quién visitó
-    investigador_id = Column(
+    usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id", ondelete="SET NULL"),
         nullable=True,
@@ -195,6 +195,7 @@ class VisitaDireccionModel(Base):
         "UsuarioModel",
         back_populates="visitas_realizadas",
         lazy="joined",
+        foreign_keys=[usuario_id],
     )
 
     def __repr__(self) -> str:
