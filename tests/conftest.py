@@ -31,7 +31,6 @@ from src.modules.usuarios.domain.entities import Usuario
 from src.modules.usuarios.infrastructure.services import PasswordHasher
 from src.modules.buffets.domain.entities import Buffet
 from src.shared.domain.enums import RolEnum
-from src.shared.domain.value_objects import Email
 
 
 # Engine y Session para tests
@@ -45,6 +44,7 @@ if test_db_url.startswith("sqlite"):
     test_engine = create_async_engine(
         async_test_db_url,
         echo=False,
+        pool_pre_ping=True,
     )
 else:
     # PostgreSQL async: usar asyncpg
@@ -52,6 +52,9 @@ else:
     test_engine = create_async_engine(
         async_test_db_url,
         echo=False,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
     )
 
 TestAsyncSessionLocal = async_sessionmaker(
@@ -66,11 +69,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Fixture para sesión de base de datos de test.
 
-    Crea todas las tablas antes de cada test y las elimina después.
+    Crea las tablas una vez (checkfirst=True evita recrearlas).
+    No elimina tablas después de cada test para evitar conflictos de concurrencia con asyncpg.
     """
-    # Crear todas las tablas
+    # Crear todas las tablas si no existen (checkfirst=True maneja la verificación)
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
     # Crear sesión
     async with TestAsyncSessionLocal() as session:
@@ -80,10 +84,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-
-    # Eliminar todas las tablas después del test
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        finally:
+            await session.close()
 
 
 @pytest.fixture(scope="function")
