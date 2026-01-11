@@ -11,6 +11,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy import select, text
+from sqlalchemy.exc import ResourceClosedError
 from httpx import AsyncClient
 
 # Configurar entorno de test antes de importar
@@ -181,9 +182,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
             await trans.rollback()
             raise
         finally:
-            # Siempre hacer rollback para limpiar datos entre tests
-            # NO hacer commit para que los datos no persistan
-            await trans.rollback()
+            # Intentar rollback solo si la transacción está activa
+            # Si el test hizo commit manual, la transacción ya está cerrada
+            try:
+                await trans.rollback()
+            except ResourceClosedError:
+                # La transacción ya fue cerrada (probablemente por commit manual)
+                # Esto es válido y no requiere acción
+                pass
 
 
 @pytest.fixture(scope="function")
