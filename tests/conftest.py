@@ -9,6 +9,7 @@ import pytest
 import asyncio
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
 from httpx import AsyncClient
 
 # Configurar entorno de test antes de importar
@@ -49,14 +50,13 @@ if test_db_url.startswith("sqlite"):
     )
 else:
     # PostgreSQL async: usar asyncpg
-    # IMPORTANTE: Deshabilitar pool_pre_ping para evitar problemas con event loops en tests
+    # CRÍTICO: Usar NullPool para evitar conflictos de concurrencia con asyncpg
+    # NullPool crea una nueva conexión para cada sesión, evitando "another operation is in progress"
     async_test_db_url = test_db_url.replace("postgresql://", "postgresql+asyncpg://")
     test_engine = create_async_engine(
         async_test_db_url,
         echo=False,
-        pool_pre_ping=False,  # Deshabilitar para evitar problemas con event loops
-        pool_size=5,
-        max_overflow=10,
+        poolclass=NullPool,  # Sin pool: cada sesión obtiene su propia conexión
     )
 
 TestAsyncSessionLocal = async_sessionmaker(
