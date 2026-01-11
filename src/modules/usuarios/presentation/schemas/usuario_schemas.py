@@ -25,13 +25,9 @@ class RegisterRequest(BaseModel):
         max_length=100,
         description="Contrasena (minimo 6 caracteres)",
     )
-    nombre: str = Field(
-        ..., min_length=2, max_length=255, description="Nombre completo"
-    )
+    nombre: str = Field(..., min_length=2, max_length=255, description="Nombre completo")
     rol: RolEnum = Field(default=RolEnum.CLIENTE, description="Rol del usuario")
-    buffet_id: Optional[int] = Field(
-        default=None, description="ID del buffet (solo para clientes)"
-    )
+    buffet_id: Optional[int] = Field(default=None, description="ID del buffet (solo para clientes)")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -53,9 +49,7 @@ class LoginRequest(BaseModel):
     password: str = Field(..., description="Contrasena")
 
     model_config = ConfigDict(
-        json_schema_extra={
-            "example": {"email": "admin@test.com", "password": "admin123"}
-        }
+        json_schema_extra={"example": {"email": "admin@test.com", "password": "admin123"}}
     )
 
 
@@ -111,12 +105,8 @@ class UserResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     """Schema para actualizar perfil."""
 
-    nombre: Optional[str] = Field(
-        None, min_length=2, max_length=255, description="Nombre completo"
-    )
-    avatar_url: Optional[str] = Field(
-        None, max_length=500, description="URL del avatar"
-    )
+    nombre: Optional[str] = Field(None, min_length=2, max_length=255, description="Nombre completo")
+    avatar_url: Optional[str] = Field(None, max_length=500, description="URL del avatar")
 
 
 class ChangePasswordRequest(BaseModel):
@@ -136,3 +126,12 @@ class MessageResponse(BaseModel):
 
     message: str = Field(..., description="Mensaje de respuesta")
     success: bool = Field(default=True, description="Si fue exitoso")
+
+
+class UserListResponse(BaseModel):
+    """Schema para lista de usuarios."""
+
+    items: list[UserResponse] = Field(..., description="Lista de usuarios")
+    total: int = Field(..., description="Total de usuarios")
+    skip: int = Field(..., description="Registros saltados")
+    limit: int = Field(..., description="Limite de registros")

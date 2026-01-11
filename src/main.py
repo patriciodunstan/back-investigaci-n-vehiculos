@@ -25,7 +25,7 @@ from src.shared.presentation.middleware import (
 from src.shared.infrastructure.database.models_registry import *  # noqa: F401, F403
 
 # Importar routers
-from src.modules.usuarios.presentation import auth_router
+from src.modules.usuarios.presentation import auth_router, usuarios_router
 from src.modules.buffets.presentation import buffet_router
 from src.modules.oficios.presentation import oficio_router
 from src.modules.investigaciones.presentation import investigacion_router, boostr_router
@@ -111,6 +111,10 @@ app.add_middleware(LoggingMiddleware)
 # Registrar routers
 app.include_router(
     auth_router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    usuarios_router,
     prefix=settings.API_V1_STR,
 )
 app.include_router(

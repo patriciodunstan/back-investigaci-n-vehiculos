@@ -96,9 +96,26 @@ async def run_async_migrations() -> None:
     # Convertir DATABASE_URL: postgresql:// → postgresql+asyncpg://
     database_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
+    # Remover parámetros de conexión que asyncpg no acepta directamente en la URL
+    # asyncpg maneja SSL y otros parámetros de forma diferente
+    if "?" in database_url:
+        base_url, params = database_url.split("?", 1)
+        # Filtrar parámetros que asyncpg no acepta
+        filtered_params = []
+        for param in params.split("&"):
+            key = param.split("=")[0] if "=" in param else param
+            # asyncpg no acepta estos parámetros directamente en la URL
+            if key not in ["sslmode", "channel_binding"]:
+                filtered_params.append(param)
+        if filtered_params:
+            database_url = f"{base_url}?{'&'.join(filtered_params)}"
+        else:
+            database_url = base_url
+
     connectable = create_async_engine(
         database_url,
         poolclass=pool.NullPool,
+        # asyncpg no necesita parámetros adicionales en connect_args para conexiones locales
     )
 
     async with connectable.connect() as connection:

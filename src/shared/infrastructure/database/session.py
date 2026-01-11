@@ -22,6 +22,22 @@ async_database_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+
 if async_database_url.startswith("sqlite"):
     async_database_url = async_database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
 
+# Remover parámetros de conexión que asyncpg no acepta (como sslmode, channel_binding)
+# asyncpg maneja SSL y otros parámetros de forma diferente
+if async_database_url.startswith("postgresql+asyncpg://") and "?" in async_database_url:
+    base_url, params = async_database_url.split("?", 1)
+    # Filtrar parámetros que asyncpg no acepta directamente en la URL
+    filtered_params = []
+    for param in params.split("&"):
+        key = param.split("=")[0] if "=" in param else param
+        # asyncpg no acepta estos parámetros directamente en la URL
+        if key not in ["sslmode", "channel_binding"]:
+            filtered_params.append(param)
+    if filtered_params:
+        async_database_url = f"{base_url}?{'&'.join(filtered_params)}"
+    else:
+        async_database_url = base_url
+
 # Configurar parámetros según el tipo de base de datos
 if async_database_url.startswith("sqlite"):
     # SQLite no acepta pool_size, max_overflow, pool_pre_ping
