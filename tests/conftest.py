@@ -49,11 +49,12 @@ if test_db_url.startswith("sqlite"):
     )
 else:
     # PostgreSQL async: usar asyncpg
+    # IMPORTANTE: Deshabilitar pool_pre_ping para evitar problemas con event loops en tests
     async_test_db_url = test_db_url.replace("postgresql://", "postgresql+asyncpg://")
     test_engine = create_async_engine(
         async_test_db_url,
         echo=False,
-        pool_pre_ping=True,
+        pool_pre_ping=False,  # Deshabilitar para evitar problemas con event loops
         pool_size=5,
         max_overflow=10,
     )
@@ -90,21 +91,28 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Fixture para sesión de base de datos de test.
 
-    Crea una sesión para cada test. Los datos se limpian mediante rollback.
+    Crea una sesión para cada test. Los datos se limpian mediante rollback al final.
+    NO hace commit, solo rollback para evitar que los datos persistan entre tests.
     """
     # Crear sesión
     async with TestAsyncSessionLocal() as session:
-        # Iniciar transacción
-        trans = await session.begin()
         try:
             yield session
         except Exception:
-            await trans.rollback()
+            # Si hay error, intentar rollback
+            try:
+                await session.rollback()
+            except Exception:
+                pass  # Si la transacción ya está cerrada, ignorar
             raise
         finally:
-            # Siempre hacer rollback para limpiar datos
-            await trans.rollback()
-            await session.close()
+            # Siempre hacer rollback al final para limpiar datos
+            # NO hacer commit para que los datos no persistan entre tests
+            try:
+                await session.rollback()
+            except Exception:
+                pass  # Si la transacción ya está cerrada, ignorar
+            # session.close() se llama automáticamente por el async with
 
 
 @pytest.fixture(scope="function")
