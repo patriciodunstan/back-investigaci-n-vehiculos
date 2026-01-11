@@ -17,7 +17,7 @@ class TestInvestigacionesEndpoints:
     ):
         """Test agregar actividad a oficio"""
         # Crear oficio
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -28,10 +28,11 @@ class TestInvestigacionesEndpoints:
                 },
             },
         )
+        await db_session.commit()
         oficio_id = create_response.json()["id"]
 
         # Agregar actividad
-        response = test_client.post(
+        response = await test_client.post(
             f"/api/v1/investigaciones/oficios/{oficio_id}/actividades",
             headers=auth_headers,
             json={
@@ -50,7 +51,7 @@ class TestInvestigacionesEndpoints:
     async def test_get_timeline_oficio(self, test_client, auth_headers, test_buffet, db_session):
         """Test obtener timeline de oficio"""
         # Crear oficio
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -61,10 +62,11 @@ class TestInvestigacionesEndpoints:
                 },
             },
         )
+        await db_session.commit()
         oficio_id = create_response.json()["id"]
 
         # Agregar actividad
-        test_client.post(
+        await test_client.post(
             f"/api/v1/investigaciones/oficios/{oficio_id}/actividades",
             headers=auth_headers,
             json={
@@ -74,7 +76,7 @@ class TestInvestigacionesEndpoints:
         )
 
         # Obtener timeline
-        response = test_client.get(
+        response = await test_client.get(
             f"/api/v1/investigaciones/oficios/{oficio_id}/timeline",
             headers=auth_headers,
         )
@@ -89,7 +91,7 @@ class TestInvestigacionesEndpoints:
     async def test_add_avistamiento(self, test_client, auth_headers, test_buffet, db_session):
         """Test agregar avistamiento"""
         # Crear oficio
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -100,10 +102,11 @@ class TestInvestigacionesEndpoints:
                 },
             },
         )
+        await db_session.commit()
         oficio_id = create_response.json()["id"]
 
         # Agregar avistamiento
-        response = test_client.post(
+        response = await test_client.post(
             f"/api/v1/investigaciones/oficios/{oficio_id}/avistamientos",
             headers=auth_headers,
             json={

@@ -7,7 +7,7 @@ Exporta los componentes principales para acceso a datos.
 from .base import Base, get_table_name
 from .session import (
     engine,
-    SessionLocal,
+    AsyncSessionLocal,
     get_db,
     get_db_context,
     init_db,
@@ -21,7 +21,7 @@ __all__ = [
     "Base",
     "get_table_name",
     "engine",
-    "SessionLocal",
+    "AsyncSessionLocal",
     "get_db",
     "get_db_context",
     "init_db",

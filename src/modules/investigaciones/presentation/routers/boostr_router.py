@@ -12,7 +12,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database import get_db
 from src.shared.infrastructure.external_apis.boostr import (
@@ -47,8 +47,10 @@ router = APIRouter(prefix="/boostr", tags=["Boostr API"])
 # SCHEMAS DE RESPUESTA
 # =============================================================================
 
+
 class VehicleInfoResponse(BaseModel):
     """Respuesta de información de vehículo."""
+
     patente: str
     marca: Optional[str] = None
     modelo: Optional[str] = None
@@ -64,6 +66,7 @@ class VehicleInfoResponse(BaseModel):
 
 class PersonInfoResponse(BaseModel):
     """Respuesta de información de persona."""
+
     rut: str
     nombre: Optional[str] = None
     nombres: Optional[str] = None
@@ -78,6 +81,7 @@ class PersonInfoResponse(BaseModel):
 
 class PersonVehicleResponse(BaseModel):
     """Vehículo asociado a una persona."""
+
     patente: str
     marca: Optional[str] = None
     modelo: Optional[str] = None
@@ -87,6 +91,7 @@ class PersonVehicleResponse(BaseModel):
 
 class TrafficFineResponse(BaseModel):
     """Multa de tránsito."""
+
     juzgado: Optional[str] = None
     comuna: Optional[str] = None
     rol: Optional[str] = None
@@ -98,6 +103,7 @@ class TrafficFineResponse(BaseModel):
 
 class InvestigacionVehiculoResponse(BaseModel):
     """Respuesta de investigación completa de vehículo."""
+
     vehiculo: Optional[VehicleInfoResponse] = None
     multas: List[TrafficFineResponse] = []
     creditos_usados: int = 0
@@ -106,6 +112,7 @@ class InvestigacionVehiculoResponse(BaseModel):
 
 class InvestigacionPropietarioResponse(BaseModel):
     """Respuesta de investigación completa de propietario."""
+
     propietario: Optional[PersonInfoResponse] = None
     vehiculos: List[PersonVehicleResponse] = []
     creditos_usados: int = 0
@@ -114,6 +121,7 @@ class InvestigacionPropietarioResponse(BaseModel):
 
 class BoostrErrorResponse(BaseModel):
     """Respuesta de error de Boostr."""
+
     detail: str
     code: Optional[str] = None
     status_code: int
@@ -123,13 +131,14 @@ class BoostrErrorResponse(BaseModel):
 # DEPENDENCIES
 # =============================================================================
 
+
 def get_boostr() -> BoostrClient:
     """Obtiene el cliente de Boostr."""
     return get_boostr_client()
 
 
 def get_investigacion_repository(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> InvestigacionRepository:
     """Dependency para obtener el repositorio."""
     return InvestigacionRepository(db)
@@ -138,6 +147,7 @@ def get_investigacion_repository(
 # =============================================================================
 # ENDPOINTS DE VEHÍCULOS
 # =============================================================================
+
 
 @router.get(
     "/vehiculo/{patente}",
@@ -155,17 +165,17 @@ async def get_vehicle_info(
 ):
     """
     Consulta información de un vehículo por su patente.
-    
+
     Datos obtenidos:
     - Marca, modelo, año, tipo
     - Color, VIN (versión extendida)
     - Propietario (si está disponible)
-    
+
     **Consume 1 crédito de Boostr.**
     """
     try:
         vehicle = await client.get_vehicle_info(patente)
-        
+
         return VehicleInfoResponse(
             patente=vehicle.patente,
             marca=vehicle.marca,
@@ -179,7 +189,7 @@ async def get_vehicle_info(
             propietario_rut=vehicle.propietario_rut,
             propietario_nombre=vehicle.propietario_nombre,
         )
-    
+
     except BoostrNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -215,14 +225,14 @@ async def get_vehicle_fines(
 ):
     """
     Consulta las multas de tránsito de un vehículo.
-    
+
     Útil para detectar ubicaciones donde ha estado el vehículo.
-    
+
     **Consume 1 crédito de Boostr.**
     """
     try:
         fines = await client.get_traffic_fines(patente)
-        
+
         return [
             TrafficFineResponse(
                 juzgado=f.juzgado,
@@ -235,7 +245,7 @@ async def get_vehicle_fines(
             )
             for f in fines
         ]
-    
+
     except BoostrRateLimitError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -253,6 +263,7 @@ async def get_vehicle_fines(
 # ENDPOINTS DE PERSONAS (RUTIFICADOR)
 # =============================================================================
 
+
 @router.get(
     "/persona/{rut}",
     response_model=PersonInfoResponse,
@@ -268,18 +279,18 @@ async def get_person_info(
 ):
     """
     Consulta información de una persona por su RUT.
-    
+
     Datos obtenidos:
     - Nombre completo
     - Género, nacionalidad
     - Fecha de nacimiento, edad
     - Estado de defunción
-    
+
     **Consume 1 crédito de Boostr.**
     """
     try:
         person = await client.get_person_info(rut)
-        
+
         return PersonInfoResponse(
             rut=person.rut,
             nombre=person.nombre,
@@ -292,7 +303,7 @@ async def get_person_info(
             edad=person.edad,
             fallecido=person.fallecido,
         )
-    
+
     except BoostrNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -328,14 +339,14 @@ async def get_person_vehicles(
 ):
     """
     Consulta los vehículos registrados a nombre de una persona.
-    
+
     Datos directamente del Registro de Vehículos Motorizados.
-    
+
     **Consume 1 crédito de Boostr.**
     """
     try:
         vehicles = await client.get_person_vehicles(rut)
-        
+
         return [
             PersonVehicleResponse(
                 patente=v.patente,
@@ -346,7 +357,7 @@ async def get_person_vehicles(
             )
             for v in vehicles
         ]
-    
+
     except BoostrValidationError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -369,6 +380,7 @@ async def get_person_vehicles(
 # ENDPOINTS DE INVESTIGACIÓN (COMBINADOS + REGISTRO)
 # =============================================================================
 
+
 @router.post(
     "/investigar/vehiculo/{patente}",
     response_model=InvestigacionVehiculoResponse,
@@ -385,13 +397,13 @@ async def investigar_vehiculo(
 ):
     """
     Realiza una investigación completa de un vehículo.
-    
+
     Consulta:
     - Información del vehículo (patente, marca, modelo, etc.)
     - Multas de tránsito (ubicaciones)
-    
+
     Si se proporciona `oficio_id`, registra la consulta en el timeline.
-    
+
     **Consume 1-2 créditos de Boostr según las opciones.**
     """
     try:
@@ -401,36 +413,40 @@ async def investigar_vehiculo(
             incluir_revision=False,  # Ahorramos créditos
             incluir_soap=False,
         )
-        
+
         # Registrar en el timeline si se proporciona oficio_id
         if oficio_id:
             try:
                 use_case = AddActividadUseCase(repository)
-                
+
                 # Preparar datos para el JSON
                 datos = {
                     "vehiculo": result.vehiculo.model_dump() if result.vehiculo else None,
                     "multas": [m.model_dump() for m in result.multas],
                     "creditos_usados": result.creditos_usados,
                 }
-                
+
                 dto = CreateActividadDTO(
                     oficio_id=oficio_id,
                     tipo_actividad=TipoActividadEnum.CONSULTA_API,
                     descripcion=f"Consulta Boostr: Vehículo {patente}",
                     investigador_id=current_user.id,
-                    resultado=f"Vehículo: {result.vehiculo.marca} {result.vehiculo.modelo}" if result.vehiculo else "Sin información",
+                    resultado=(
+                        f"Vehículo: {result.vehiculo.marca} {result.vehiculo.modelo}"
+                        if result.vehiculo
+                        else "Sin información"
+                    ),
                     api_externa="boostr",
                     datos_json=json.dumps(datos, default=str),
                 )
-                
+
                 await use_case.execute(dto)
                 logger.info(f"Actividad registrada para oficio {oficio_id}")
-            
+
             except Exception as e:
                 logger.error(f"Error registrando actividad: {e}")
                 # No fallar la consulta si falla el registro
-        
+
         # Preparar respuesta
         vehiculo_response = None
         if result.vehiculo:
@@ -447,7 +463,7 @@ async def investigar_vehiculo(
                 propietario_rut=result.vehiculo.propietario_rut,
                 propietario_nombre=result.vehiculo.propietario_nombre,
             )
-        
+
         multas_response = [
             TrafficFineResponse(
                 juzgado=m.juzgado,
@@ -460,14 +476,14 @@ async def investigar_vehiculo(
             )
             for m in result.multas
         ]
-        
+
         return InvestigacionVehiculoResponse(
             vehiculo=vehiculo_response,
             multas=multas_response,
             creditos_usados=result.creditos_usados,
             fecha_consulta=result.fecha_consulta,
         )
-    
+
     except BoostrRateLimitError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -497,13 +513,13 @@ async def investigar_propietario(
 ):
     """
     Realiza una investigación completa de un propietario.
-    
+
     Consulta:
     - Información de la persona (nombre, género, nacionalidad, etc.)
     - Otros vehículos a su nombre
-    
+
     Si se proporciona `oficio_id`, registra la consulta en el timeline.
-    
+
     **Consume 1-2 créditos de Boostr según las opciones.**
     """
     try:
@@ -513,35 +529,39 @@ async def investigar_propietario(
             incluir_propiedades=False,  # Ahorramos créditos
             incluir_verificaciones=False,
         )
-        
+
         # Registrar en el timeline si se proporciona oficio_id
         if oficio_id:
             try:
                 use_case = AddActividadUseCase(repository)
-                
+
                 # Preparar datos para el JSON
                 datos = {
                     "propietario": result.propietario.model_dump() if result.propietario else None,
                     "otros_vehiculos": [v.model_dump() for v in result.otros_vehiculos],
                     "creditos_usados": result.creditos_usados,
                 }
-                
+
                 dto = CreateActividadDTO(
                     oficio_id=oficio_id,
                     tipo_actividad=TipoActividadEnum.CONSULTA_API,
                     descripcion=f"Consulta Boostr: Propietario {rut}",
                     investigador_id=current_user.id,
-                    resultado=f"Propietario: {result.propietario.nombre}" if result.propietario else "Sin información",
+                    resultado=(
+                        f"Propietario: {result.propietario.nombre}"
+                        if result.propietario
+                        else "Sin información"
+                    ),
                     api_externa="boostr",
                     datos_json=json.dumps(datos, default=str),
                 )
-                
+
                 await use_case.execute(dto)
                 logger.info(f"Actividad registrada para oficio {oficio_id}")
-            
+
             except Exception as e:
                 logger.error(f"Error registrando actividad: {e}")
-        
+
         # Preparar respuesta
         propietario_response = None
         if result.propietario:
@@ -557,7 +577,7 @@ async def investigar_propietario(
                 edad=result.propietario.edad,
                 fallecido=result.propietario.fallecido,
             )
-        
+
         vehiculos_response = [
             PersonVehicleResponse(
                 patente=v.patente,
@@ -568,14 +588,14 @@ async def investigar_propietario(
             )
             for v in result.otros_vehiculos
         ]
-        
+
         return InvestigacionPropietarioResponse(
             propietario=propietario_response,
             vehiculos=vehiculos_response,
             creditos_usados=result.creditos_usados,
             fecha_consulta=result.fecha_consulta,
         )
-    
+
     except BoostrValidationError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

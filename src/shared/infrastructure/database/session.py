@@ -8,85 +8,100 @@ Principios aplicados:
 - DIP: Los repositorios reciben la sesión como dependencia
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import QueuePool
-from typing import Generator
-from contextlib import contextmanager
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from src.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    pool_pre_ping=True,
-    echo=settings.DB_ECHO,
+# Convertir DATABASE_URL: postgresql:// → postgresql+asyncpg://
+# SQLite: sqlite:/// → sqlite+aiosqlite:///
+async_database_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+if async_database_url.startswith("sqlite"):
+    async_database_url = async_database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+
+# Configurar parámetros según el tipo de base de datos
+if async_database_url.startswith("sqlite"):
+    # SQLite no acepta pool_size, max_overflow, pool_pre_ping
+    engine = create_async_engine(
+        async_database_url,
+        echo=settings.DB_ECHO,
+    )
+else:
+    # PostgreSQL acepta todos los parámetros
+    engine = create_async_engine(
+        async_database_url,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_pre_ping=True,
+        echo=settings.DB_ECHO,
+    )
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-def get_db() -> Generator[Session, None, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency de FastAPI para obtener sesión de BD.
 
     Uso en endpoints:
         @router.get("/items")
-        async def get_items(db: Session = Depends(get_db)):
-            return db.query(Item).all()
+        async def get_items(db: AsyncSession = Depends(get_db)):
+            result = await db.execute(select(Item))
+            return result.scalars().all()
 
     Yields:
-        Session: Sesión de SQLAlchemy
+        AsyncSession: Sesión asíncrona de SQLAlchemy
 
     Note:
         La sesión se cierra automáticamente al finalizar el request.
         Si no hay excepciones, se hace commit automático.
     """
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
-@contextmanager
-def get_db_context() -> Generator[Session, None, None]:
+@asynccontextmanager
+async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
     """
     Context manager para obtener sesión de BD.
 
-    Útil para scripts y tareas Celery donde no hay request de FastAPI.
+    Útil para scripts y tareas donde no hay request de FastAPI.
 
     Uso:
-        with get_db_context() as db:
-            db.query(Item).all()
+        async with get_db_context() as db:
+            result = await db.execute(select(Item))
+            items = result.scalars().all()
 
     Yields:
-        Session: Sesión de SQLAlchemy
+        AsyncSession: Sesión asíncrona de SQLAlchemy
     """
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
-def init_db() -> None:
+async def init_db() -> None:
     """
     Inicializa la base de datos creando todas las tablas.
 
     Uso:
-        python -c "from src.shared.infrastructure.database.session import init_db; init_db()"
+        python -c "import asyncio; from src.shared.infrastructure.database.session import init_db; asyncio.run(init_db())"
 
     Note:
         En producción, usar Alembic para migraciones en lugar de esto.
@@ -99,11 +114,12 @@ def init_db() -> None:
     # from src.modules.usuarios.infrastructure.models import UsuarioModel
     # etc.
 
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     print("✅ Base de datos inicializada")
 
 
-def drop_db() -> None:
+async def drop_db() -> None:
     """
     Elimina todas las tablas de la base de datos.
 
@@ -114,5 +130,6 @@ def drop_db() -> None:
     if settings.is_production:
         raise RuntimeError("No se puede eliminar la BD en producción")
 
-    Base.metadata.drop_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     print("🗑️ Todas las tablas eliminadas")

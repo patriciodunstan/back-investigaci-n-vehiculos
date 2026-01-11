@@ -9,7 +9,7 @@ Principios aplicados:
 from typing import Optional, List
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.usuarios.application.interfaces import IUsuarioRepository
 from src.modules.usuarios.domain.entities import Usuario
@@ -24,7 +24,7 @@ class UsuarioRepository(IUsuarioRepository):
     Implementa todas las operaciones definidas en IUsuarioRepository.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     def _model_to_entity(self, model: UsuarioModel) -> Usuario:
@@ -66,7 +66,7 @@ class UsuarioRepository(IUsuarioRepository):
     async def get_by_id(self, user_id: int) -> Optional[Usuario]:
         """Obtiene usuario por ID."""
         stmt = select(UsuarioModel).where(UsuarioModel.id == user_id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -78,7 +78,7 @@ class UsuarioRepository(IUsuarioRepository):
         """Obtiene usuario por email."""
         email_lower = email.lower().strip()
         stmt = select(UsuarioModel).where(UsuarioModel.email == email_lower)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -90,11 +90,9 @@ class UsuarioRepository(IUsuarioRepository):
         """Verifica si existe usuario con email."""
         email_lower = email.lower().strip()
         stmt = (
-            select(func.count())
-            .select_from(UsuarioModel)
-            .where(UsuarioModel.email == email_lower)
+            select(func.count()).select_from(UsuarioModel).where(UsuarioModel.email == email_lower)
         )
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         count = result.scalar()
         return count > 0
 
@@ -111,14 +109,14 @@ class UsuarioRepository(IUsuarioRepository):
         )
 
         self._session.add(model)
-        self._session.flush()  # Para obtener el ID
+        await self._session.flush()  # Para obtener el ID
 
         return self._model_to_entity(model)
 
     async def update(self, usuario: Usuario) -> Usuario:
         """Actualiza usuario existente."""
         stmt = select(UsuarioModel).where(UsuarioModel.id == usuario.id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -131,21 +129,24 @@ class UsuarioRepository(IUsuarioRepository):
         model.activo = usuario.activo
         model.avatar_url = usuario.avatar_url
 
-        self._session.flush()
+        await self._session.flush()
+
+        # Refrescar el modelo para asegurar que todos los atributos estén disponibles (especialmente updated_at)
+        await self._session.refresh(model)
 
         return self._model_to_entity(model)
 
     async def delete(self, user_id: int) -> bool:
         """Elimina usuario (soft delete)."""
         stmt = select(UsuarioModel).where(UsuarioModel.id == user_id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
             return False
 
         model.activo = False
-        self._session.flush()
+        await self._session.flush()
 
         return True
 
@@ -163,7 +164,7 @@ class UsuarioRepository(IUsuarioRepository):
 
         stmt = stmt.offset(skip).limit(limit)
 
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         models = result.scalars().all()
 
         return [self._model_to_entity(m) for m in models]
@@ -183,7 +184,7 @@ class UsuarioRepository(IUsuarioRepository):
             .limit(limit)
         )
 
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         models = result.scalars().all()
 
         return [self._model_to_entity(m) for m in models]
@@ -195,6 +196,6 @@ class UsuarioRepository(IUsuarioRepository):
         if activo_only:
             stmt = stmt.where(UsuarioModel.activo == True)  # noqa: E712
 
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         count = result.scalar()
         return count

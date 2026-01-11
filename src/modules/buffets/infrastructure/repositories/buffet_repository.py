@@ -5,7 +5,7 @@ Implementacion SQLAlchemy del repositorio de buffets.
 from typing import Optional, List
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.buffets.application.interfaces import IBuffetRepository
 from src.modules.buffets.domain.entities import Buffet
@@ -16,7 +16,7 @@ from src.shared.domain.value_objects import RutChileno, Email
 class BuffetRepository(IBuffetRepository):
     """Repositorio de buffets usando SQLAlchemy."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     def _model_to_entity(self, model: BuffetModel) -> Buffet:
@@ -30,15 +30,18 @@ class BuffetRepository(IBuffetRepository):
             token_tablero=model.token_tablero,
             activo=model.activo,
         )
-        buffet.id = model.id
-        buffet.create_at = model.created_at
-        buffet.update_at = model.updated_at
+        if model.id:
+            buffet.id = model.id
+        if model.created_at:
+            buffet.create_at = model.created_at
+        if model.updated_at:
+            buffet.update_at = model.updated_at
         return buffet
 
     async def get_by_id(self, buffet_id: int) -> Optional[Buffet]:
         """Obtiene buffet por ID."""
         stmt = select(BuffetModel).where(BuffetModel.id == buffet_id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -49,7 +52,7 @@ class BuffetRepository(IBuffetRepository):
     async def get_by_rut(self, rut: str) -> Optional[Buffet]:
         """Obtiene buffet por RUT."""
         stmt = select(BuffetModel).where(BuffetModel.rut == rut)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -60,7 +63,7 @@ class BuffetRepository(IBuffetRepository):
     async def get_by_token(self, token: str) -> Optional[Buffet]:
         """Obtiene buffet por token de tablero."""
         stmt = select(BuffetModel).where(BuffetModel.token_tablero == token)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -71,7 +74,7 @@ class BuffetRepository(IBuffetRepository):
     async def exists_by_rut(self, rut: str) -> bool:
         """Verifica si existe buffet con RUT."""
         stmt = select(func.count()).select_from(BuffetModel).where(BuffetModel.rut == rut)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         count = result.scalar()
         return count > 0
 
@@ -88,14 +91,14 @@ class BuffetRepository(IBuffetRepository):
         )
 
         self._session.add(model)
-        self._session.flush()
+        await self._session.flush()
 
         return self._model_to_entity(model)
 
     async def update(self, buffet: Buffet) -> Buffet:
         """Actualiza buffet existente."""
         stmt = select(BuffetModel).where(BuffetModel.id == buffet.id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
@@ -108,21 +111,24 @@ class BuffetRepository(IBuffetRepository):
         model.token_tablero = buffet.token_tablero
         model.activo = buffet.activo
 
-        self._session.flush()
+        await self._session.flush()
+
+        # Refrescar el modelo para asegurar que todos los atributos estén disponibles (especialmente updated_at)
+        await self._session.refresh(model)
 
         return self._model_to_entity(model)
 
     async def delete(self, buffet_id: int) -> bool:
         """Elimina buffet (soft delete)."""
         stmt = select(BuffetModel).where(BuffetModel.id == buffet_id)
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
 
         if model is None:
             return False
 
         model.activo = False
-        self._session.flush()
+        await self._session.flush()
 
         return True
 
@@ -140,7 +146,7 @@ class BuffetRepository(IBuffetRepository):
 
         stmt = stmt.offset(skip).limit(limit)
 
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         models = result.scalars().all()
 
         return [self._model_to_entity(m) for m in models]
@@ -152,5 +158,5 @@ class BuffetRepository(IBuffetRepository):
         if activo_only:
             stmt = stmt.where(BuffetModel.activo == True)  # noqa: E712
 
-        result = self._session.execute(stmt)
+        result = await self._session.execute(stmt)
         return result.scalar() or 0

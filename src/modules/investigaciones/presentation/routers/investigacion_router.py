@@ -5,7 +5,7 @@ Endpoints para timeline, actividades y avistamientos.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database import get_db
 from src.modules.investigaciones.application.dtos import (
@@ -32,11 +32,11 @@ from src.modules.usuarios.presentation.routers import get_current_user
 from src.modules.usuarios.presentation.schemas import UserResponse
 
 
-router = APIRouter(tags=["Investigaciones"])
+router = APIRouter(prefix="/investigaciones", tags=["Investigaciones"])
 
 
 def get_investigacion_repository(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> InvestigacionRepository:
     """Dependency para obtener el repositorio."""
     return InvestigacionRepository(db)
@@ -156,4 +156,3 @@ async def add_avistamiento(
         notas=result.notas,
         created_at=result.created_at,
     )
-

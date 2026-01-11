@@ -5,7 +5,7 @@ Endpoints CRUD para gestion de buffets.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database import get_db
 from src.modules.buffets.application.dtos import CreateBuffetDTO, UpdateBuffetDTO
@@ -33,7 +33,7 @@ from src.modules.usuarios.presentation.schemas import UserResponse
 router = APIRouter(prefix="/buffets", tags=["Buffets"])
 
 
-def get_buffet_repository(db: Session = Depends(get_db)) -> BuffetRepository:
+def get_buffet_repository(db: AsyncSession = Depends(get_db)) -> BuffetRepository:
     """Dependency para obtener el repositorio de buffets."""
     return BuffetRepository(db)
 

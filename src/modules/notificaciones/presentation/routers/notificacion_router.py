@@ -5,7 +5,7 @@ Endpoints para enviar y consultar notificaciones.
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database import get_db
 from src.modules.notificaciones.application.dtos import CreateNotificacionDTO
@@ -26,11 +26,11 @@ from src.modules.usuarios.presentation.routers import get_current_user
 from src.modules.usuarios.presentation.schemas import UserResponse
 
 
-router = APIRouter(tags=["Notificaciones"])
+router = APIRouter(prefix="/notificaciones", tags=["Notificaciones"])
 
 
 def get_notificacion_repository(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> NotificacionRepository:
     """Dependency para obtener el repositorio."""
     return NotificacionRepository(db)
@@ -116,4 +116,3 @@ async def send_notificacion(
         error_mensaje=result.error_mensaje,
         created_at=result.created_at,
     )
-

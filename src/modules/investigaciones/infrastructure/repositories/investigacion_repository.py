@@ -6,7 +6,7 @@ from typing import List
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.investigaciones.application.interfaces import IInvestigacionRepository
 from src.modules.investigaciones.application.dtos import (
@@ -24,7 +24,7 @@ from src.shared.domain.enums import TipoActividadEnum, FuenteAvistamientoEnum
 class InvestigacionRepository(IInvestigacionRepository):
     """Repositorio de investigaciones usando SQLAlchemy."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     async def add_actividad(
@@ -49,7 +49,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             fecha_actividad=datetime.utcnow(),
         )
         self._session.add(actividad)
-        self._session.flush()
+        await self._session.flush()
 
         return ActividadResponseDTO(
             id=actividad.id,
@@ -91,7 +91,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             datos_json=datos_json,
         )
         self._session.add(avistamiento)
-        self._session.flush()
+        await self._session.flush()
 
         return AvistamientoResponseDTO(
             id=avistamiento.id,
@@ -120,7 +120,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             .order_by(InvestigacionModel.fecha_actividad.desc())
             .limit(limit)
         )
-        actividades = self._session.execute(act_stmt).scalars().all()
+        actividades = (await self._session.execute(act_stmt)).unique().scalars().all()
 
         # Obtener avistamientos
         avist_stmt = (
@@ -129,7 +129,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             .order_by(AvistamientoModel.fecha_hora.desc())
             .limit(limit)
         )
-        avistamientos = self._session.execute(avist_stmt).scalars().all()
+        avistamientos = (await self._session.execute(avist_stmt)).unique().scalars().all()
 
         # Combinar en timeline
         timeline = []
@@ -174,7 +174,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             .where(InvestigacionModel.oficio_id == oficio_id)
             .order_by(InvestigacionModel.fecha_actividad.desc())
         )
-        models = self._session.execute(stmt).scalars().all()
+        models = (await self._session.execute(stmt)).scalars().all()
 
         return [
             ActividadResponseDTO(
@@ -202,7 +202,7 @@ class InvestigacionRepository(IInvestigacionRepository):
             .where(AvistamientoModel.oficio_id == oficio_id)
             .order_by(AvistamientoModel.fecha_hora.desc())
         )
-        models = self._session.execute(stmt).scalars().all()
+        models = (await self._session.execute(stmt)).scalars().all()
 
         return [
             AvistamientoResponseDTO(
@@ -220,4 +220,3 @@ class InvestigacionRepository(IInvestigacionRepository):
             )
             for m in models
         ]
-

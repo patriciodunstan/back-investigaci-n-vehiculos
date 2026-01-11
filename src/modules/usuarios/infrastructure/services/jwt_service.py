@@ -8,7 +8,7 @@ Principios aplicados:
 - DIP: Depende de configuracion inyectada
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 from jose import jwt, JWTError
@@ -147,7 +147,10 @@ class JWTService:
         if exp is None:
             return True
 
-        return datetime.utcnow() > datetime.fromtimestamp(exp)
+        # Comparar timestamps directamente (exp es un timestamp en segundos)
+        # Usar datetime.now(timezone.utc) en lugar de datetime.utcnow() (deprecado)
+        now_timestamp = datetime.now(timezone.utc).timestamp()
+        return now_timestamp > exp
 
 
 # Instancia singleton para uso en toda la aplicacion

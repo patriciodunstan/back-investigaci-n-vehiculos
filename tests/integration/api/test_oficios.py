@@ -14,7 +14,7 @@ class TestOficiosEndpoints:
     @pytest.mark.asyncio
     async def test_create_oficio_exitoso(self, test_client, auth_headers, test_buffet):
         """Test creación exitosa de oficio"""
-        response = test_client.post(
+        response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -35,13 +35,15 @@ class TestOficiosEndpoints:
         data = response.json()
         assert data["numero_oficio"] == "OF-2024-001"
         assert data["buffet_id"] == test_buffet.id
-        assert "vehiculo" in data
-        assert data["vehiculo"]["patente"] == "ABCD12"
+        assert "vehiculos" in data
+        assert isinstance(data["vehiculos"], list)
+        assert len(data["vehiculos"]) == 1
+        assert data["vehiculos"][0]["patente"] == "ABCD12"
 
     @pytest.mark.asyncio
     async def test_create_oficio_con_propietarios(self, test_client, auth_headers, test_buffet):
         """Test creación de oficio con propietarios"""
-        response = test_client.post(
+        response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -62,6 +64,9 @@ class TestOficiosEndpoints:
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
+        assert "vehiculos" in data
+        assert isinstance(data["vehiculos"], list)
+        assert len(data["vehiculos"]) == 1
         assert len(data["propietarios"]) == 1
         assert data["propietarios"][0]["rut"] == "12345678-9"
 
@@ -69,7 +74,7 @@ class TestOficiosEndpoints:
     async def test_get_oficio_by_id(self, test_client, auth_headers, test_buffet, db_session):
         """Test obtención de oficio por ID"""
         # Crear oficio primero
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -83,7 +88,7 @@ class TestOficiosEndpoints:
         oficio_id = create_response.json()["id"]
 
         # Obtener oficio
-        response = test_client.get(
+        response = await test_client.get(
             f"/api/v1/oficios/{oficio_id}",
             headers=auth_headers,
         )
@@ -96,7 +101,7 @@ class TestOficiosEndpoints:
     @pytest.mark.asyncio
     async def test_list_oficios(self, test_client, auth_headers, test_buffet):
         """Test listado de oficios"""
-        response = test_client.get(
+        response = await test_client.get(
             "/api/v1/oficios",
             headers=auth_headers,
         )
@@ -112,7 +117,7 @@ class TestOficiosEndpoints:
     ):
         """Test agregar propietario a oficio existente"""
         # Crear oficio
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -126,7 +131,7 @@ class TestOficiosEndpoints:
         oficio_id = create_response.json()["id"]
 
         # Agregar propietario
-        response = test_client.post(
+        response = await test_client.post(
             f"/api/v1/oficios/{oficio_id}/propietarios",
             headers=auth_headers,
             json={
@@ -147,7 +152,7 @@ class TestOficiosEndpoints:
     ):
         """Test agregar dirección a oficio existente"""
         # Crear oficio
-        create_response = test_client.post(
+        create_response = await test_client.post(
             "/api/v1/oficios",
             headers=auth_headers,
             json={
@@ -161,7 +166,7 @@ class TestOficiosEndpoints:
         oficio_id = create_response.json()["id"]
 
         # Agregar dirección
-        response = test_client.post(
+        response = await test_client.post(
             f"/api/v1/oficios/{oficio_id}/direcciones",
             headers=auth_headers,
             json={

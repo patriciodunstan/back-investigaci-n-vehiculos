@@ -10,7 +10,7 @@ Principios aplicados:
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database import get_db
 from src.modules.usuarios.application.dtos import RegisterUserDTO, LoginDTO
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticacion"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
-def get_usuario_repository(db: Session = Depends(get_db)) -> UsuarioRepository:
+def get_usuario_repository(db: AsyncSession = Depends(get_db)) -> UsuarioRepository:
     """Dependency para obtener el repositorio de usuarios."""
     return UsuarioRepository(db)
 

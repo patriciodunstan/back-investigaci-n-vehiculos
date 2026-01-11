@@ -6,11 +6,9 @@ Este archivo contiene fixtures de pytest que se pueden usar en todos los tests.
 
 import os
 import pytest
-from typing import Generator
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker, Session
-from fastapi.testclient import TestClient
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from httpx import AsyncClient
 
 # Configurar entorno de test antes de importar
 os.environ["ENVIRONMENT"] = "test"
@@ -40,55 +38,63 @@ from src.shared.domain.value_objects import Email
 # Usar DATABASE_URL del entorno si está disponible (CI), sino SQLite en memoria
 test_db_url = os.environ.get("DATABASE_URL", "sqlite:///:memory:")
 
+# Convertir DATABASE_URL para async
 if test_db_url.startswith("sqlite"):
-    # SQLite en memoria: usar StaticPool para que todas las conexiones compartan la misma BD
-    test_engine = create_engine(
-        test_db_url,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+    # SQLite async: usar aiosqlite
+    async_test_db_url = test_db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+    test_engine = create_async_engine(
+        async_test_db_url,
         echo=False,
     )
 else:
-    # PostgreSQL u otro: usar configuración estándar
-    test_engine = create_engine(test_db_url, echo=False)
+    # PostgreSQL async: usar asyncpg
+    async_test_db_url = test_db_url.replace("postgresql://", "postgresql+asyncpg://")
+    test_engine = create_async_engine(
+        async_test_db_url,
+        echo=False,
+    )
 
-TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+TestAsyncSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 @pytest.fixture(scope="function")
-def db_session() -> Generator[Session, None, None]:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Fixture para sesión de base de datos de test.
 
     Crea todas las tablas antes de cada test y las elimina después.
     """
     # Crear todas las tablas
-    Base.metadata.create_all(bind=test_engine)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     # Crear sesión
-    session = TestSessionLocal()
+    async with TestAsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        # Eliminar todas las tablas después del test
-        Base.metadata.drop_all(bind=test_engine)
+    # Eliminar todas las tablas después del test
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(scope="function")
-def test_client(db_session: Session) -> Generator[TestClient, None, None]:
+async def test_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
-    Fixture para cliente HTTP de FastAPI.
+    Fixture para cliente HTTP asíncrono de FastAPI.
 
     Override de get_db para usar la sesión de test.
     """
 
-    def override_get_db():
+    async def override_get_db():
         try:
             yield db_session
         finally:
@@ -98,9 +104,8 @@ def test_client(db_session: Session) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides[get_db] = override_get_db
 
-    client = TestClient(app)
-
-    yield client
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
     # Limpiar override
     app.dependency_overrides.clear()
@@ -113,7 +118,7 @@ def password_hasher():
 
 
 @pytest.fixture
-def admin_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
+async def admin_user(db_session: AsyncSession, password_hasher: PasswordHasher) -> Usuario:
     """
     Fixture para usuario admin de prueba.
 
@@ -139,8 +144,8 @@ def admin_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
         activo=usuario.activo,
     )
     db_session.add(model)
-    db_session.flush()
-    db_session.refresh(model)
+    await db_session.flush()
+    await db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
     object.__setattr__(usuario, "create_at", model.created_at)
@@ -150,7 +155,7 @@ def admin_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
 
 
 @pytest.fixture
-def investigador_user(db_session: Session, password_hasher: PasswordHasher) -> Usuario:
+async def investigador_user(db_session: AsyncSession, password_hasher: PasswordHasher) -> Usuario:
     """
     Fixture para usuario investigador de prueba.
     """
@@ -173,8 +178,8 @@ def investigador_user(db_session: Session, password_hasher: PasswordHasher) -> U
         activo=usuario.activo,
     )
     db_session.add(model)
-    db_session.flush()
-    db_session.refresh(model)
+    await db_session.flush()
+    await db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
     object.__setattr__(usuario, "create_at", model.created_at)
@@ -184,7 +189,9 @@ def investigador_user(db_session: Session, password_hasher: PasswordHasher) -> U
 
 
 @pytest.fixture
-def cliente_user(db_session: Session, password_hasher: PasswordHasher, test_buffet) -> Usuario:
+async def cliente_user(
+    db_session: AsyncSession, password_hasher: PasswordHasher, test_buffet
+) -> Usuario:
     """
     Fixture para usuario cliente de prueba.
     """
@@ -209,8 +216,8 @@ def cliente_user(db_session: Session, password_hasher: PasswordHasher, test_buff
         activo=usuario.activo,
     )
     db_session.add(model)
-    db_session.flush()
-    db_session.refresh(model)
+    await db_session.flush()
+    await db_session.refresh(model)
 
     object.__setattr__(usuario, "id", model.id)
     object.__setattr__(usuario, "create_at", model.created_at)
@@ -220,7 +227,7 @@ def cliente_user(db_session: Session, password_hasher: PasswordHasher, test_buff
 
 
 @pytest.fixture
-def test_buffet(db_session: Session) -> Buffet:
+async def test_buffet(db_session: AsyncSession) -> Buffet:
     """
     Fixture para buffet de prueba.
     """
@@ -244,8 +251,8 @@ def test_buffet(db_session: Session) -> Buffet:
         activo=buffet.activo,
     )
     db_session.add(model)
-    db_session.flush()
-    db_session.refresh(model)
+    await db_session.flush()
+    await db_session.refresh(model)
 
     object.__setattr__(buffet, "id", model.id)
     object.__setattr__(buffet, "create_at", model.created_at)
@@ -255,13 +262,13 @@ def test_buffet(db_session: Session) -> Buffet:
 
 
 @pytest.fixture
-def auth_headers(test_client: TestClient, admin_user: Usuario) -> dict:
+async def auth_headers(test_client: AsyncClient, admin_user: Usuario) -> dict:
     """
     Fixture para headers de autenticación.
 
     Retorna headers con token JWT válido del admin_user.
     """
-    response = test_client.post(
+    response = await test_client.post(
         "/api/v1/auth/login",
         data={
             "username": admin_user.email_str,

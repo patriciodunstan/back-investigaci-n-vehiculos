@@ -91,9 +91,7 @@ class OficioModel(Base):
     fecha_limite = Column(Date, nullable=True, comment="Fecha límite para completar")
 
     # Notas
-    notas_generales = Column(
-        Text, nullable=True, comment="Notas o comentarios generales"
-    )
+    notas_generales = Column(Text, nullable=True, comment="Notas o comentarios generales")
 
     # Relaciones
     buffet = relationship("BuffetModel", back_populates="oficios", lazy="joined")
@@ -112,13 +110,13 @@ class OficioModel(Base):
     propietarios = relationship(
         "PropietarioModel",
         back_populates="oficio",
-        lazy="dynamic",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )
     direcciones = relationship(
         "DireccionModel",
         back_populates="oficio",
-        lazy="dynamic",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )
     investigaciones = relationship(

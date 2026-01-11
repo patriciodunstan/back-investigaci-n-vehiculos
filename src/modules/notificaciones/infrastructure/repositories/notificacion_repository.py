@@ -6,7 +6,7 @@ from typing import List
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.notificaciones.application.interfaces import INotificacionRepository
 from src.modules.notificaciones.application.dtos import NotificacionResponseDTO
@@ -17,7 +17,7 @@ from src.shared.domain.enums import TipoNotificacionEnum
 class NotificacionRepository(INotificacionRepository):
     """Repositorio de notificaciones usando SQLAlchemy."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     def _model_to_dto(self, model: NotificacionModel) -> NotificacionResponseDTO:
@@ -55,7 +55,7 @@ class NotificacionRepository(INotificacionRepository):
             intentos=0,
         )
         self._session.add(notificacion)
-        self._session.flush()
+        await self._session.flush()
 
         return self._model_to_dto(notificacion)
 
@@ -69,7 +69,7 @@ class NotificacionRepository(INotificacionRepository):
             .where(NotificacionModel.oficio_id == oficio_id)
             .order_by(NotificacionModel.created_at.desc())
         )
-        models = self._session.execute(stmt).scalars().all()
+        models = (await self._session.execute(stmt)).unique().scalars().all()
 
         return [self._model_to_dto(m) for m in models]
 
@@ -78,14 +78,12 @@ class NotificacionRepository(INotificacionRepository):
         notificacion_id: int,
     ) -> NotificacionResponseDTO:
         """Marca notificacion como enviada."""
-        stmt = select(NotificacionModel).where(
-            NotificacionModel.id == notificacion_id
-        )
-        model = self._session.execute(stmt).scalar_one()
+        stmt = select(NotificacionModel).where(NotificacionModel.id == notificacion_id)
+        model = (await self._session.execute(stmt)).unique().scalar_one()
 
         model.enviada = True
         model.fecha_envio = datetime.utcnow()
-        self._session.flush()
+        await self._session.flush()
 
         return self._model_to_dto(model)
 
@@ -95,14 +93,11 @@ class NotificacionRepository(INotificacionRepository):
         mensaje: str,
     ) -> NotificacionResponseDTO:
         """Registra error en notificacion."""
-        stmt = select(NotificacionModel).where(
-            NotificacionModel.id == notificacion_id
-        )
-        model = self._session.execute(stmt).scalar_one()
+        stmt = select(NotificacionModel).where(NotificacionModel.id == notificacion_id)
+        model = (await self._session.execute(stmt)).unique().scalar_one()
 
         model.intentos += 1
         model.error_mensaje = mensaje
-        self._session.flush()
+        await self._session.flush()
 
         return self._model_to_dto(model)
-

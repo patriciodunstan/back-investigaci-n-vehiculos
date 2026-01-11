@@ -5,7 +5,7 @@ Endpoints para gestion de oficios de investigacion.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from src.shared.infrastructure.database import get_db
@@ -62,7 +62,7 @@ from src.modules.usuarios.presentation.schemas import UserResponse
 router = APIRouter(prefix="/oficios", tags=["Oficios"])
 
 
-def get_oficio_repository(db: Session = Depends(get_db)) -> OficioRepository:
+def get_oficio_repository(db: AsyncSession = Depends(get_db)) -> OficioRepository:
     """Dependency para obtener el repositorio."""
     return OficioRepository(db)
 
@@ -220,6 +220,34 @@ async def create_oficio(
         color=request.vehiculo.color,
         vin=request.vehiculo.vin,
     )
+    propietarios_dto = None
+    if request.propietarios:
+        propietarios_dto = [
+            PropietarioDTO(
+                rut=p.rut,
+                nombre_completo=p.nombre_completo,
+                email=p.email,
+                telefono=p.telefono,
+                tipo=p.tipo,
+                direccion_principal=p.direccion_principal,
+                notas=p.notas,
+            )
+            for p in request.propietarios
+        ]
+
+    direcciones_dto = None
+    if request.direcciones:
+        direcciones_dto = [
+            DireccionDTO(
+                direccion=d.direccion,
+                comuna=d.comuna,
+                region=d.region,
+                tipo=d.tipo,
+                notas=d.notas,
+            )
+            for d in request.direcciones
+        ]
+
     dto = CreateOficioDTO(
         numero_oficio=request.numero_oficio,
         buffet_id=request.buffet_id,
@@ -227,6 +255,8 @@ async def create_oficio(
         prioridad=request.prioridad,
         fecha_limite=request.fecha_limite,
         notas_generales=request.notas_generales,
+        propietarios=propietarios_dto,
+        direcciones=direcciones_dto,
     )
 
     try:
@@ -407,6 +437,7 @@ async def add_direccion(
 # ENDPOINTS DE VISITAS A DIRECCIONES
 # =============================================================================
 
+
 @router.post(
     "/direcciones/{direccion_id}/visitas",
     response_model=VisitaDireccionResponse,
@@ -421,10 +452,10 @@ async def registrar_visita(
 ):
     """
     Registra una visita a una dirección.
-    
+
     Actualiza el estado de verificación de la dirección y guarda
     la visita en el historial.
-    
+
     Resultados posibles:
     - `exitosa`: Se encontró al propietario/vehículo
     - `no_encontrado`: Nadie en el domicilio
@@ -475,7 +506,7 @@ async def get_historial_visitas(
 ):
     """
     Obtiene el historial de visitas a una dirección.
-    
+
     Retorna todas las visitas ordenadas por fecha (más reciente primero).
     """
     use_case = GetHistorialVisitasUseCase(repository)
@@ -512,7 +543,7 @@ async def get_direcciones_pendientes(
 ):
     """
     Obtiene las direcciones de un oficio que requieren verificación.
-    
+
     Incluye:
     - Direcciones nunca visitadas (pendiente)
     - Direcciones con resultado no_encontrado (intentar de nuevo)
@@ -520,7 +551,7 @@ async def get_direcciones_pendientes(
     """
     use_case = GetDireccionesPendientesUseCase(repository)
     direcciones = await use_case.execute(oficio_id)
-    
+
     return [
         DireccionResponse(
             id=d.id,

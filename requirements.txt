@@ -15,7 +15,7 @@ alembic==1.13.1
 # psycopg2-binary 2.9.10+ tiene mejor soporte para Python 3.13
 # PERO se recomienda usar Python 3.12 para evitar problemas
 psycopg2-binary==2.9.10
-# asyncpg==0.29.0  # Comentado - no se usa en el código, solo SQLAlchemy con psycopg2-binary
+asyncpg==0.29.0  # Driver asíncrono para PostgreSQL
 
 # ==================== AUTENTICACIÓN ====================
 python-jose[cryptography]==3.3.0
@@ -48,6 +48,7 @@ openpyxl==3.1.2
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
+aiosqlite==0.19.0  # Driver asíncrono para SQLite (tests)
 black==24.1.1
 ruff==0.1.14
 mypy==1.8.0

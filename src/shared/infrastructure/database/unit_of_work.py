@@ -8,11 +8,11 @@ Principios aplicados:
 - DIP: Implementa la interface IUnitOfWork
 """
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from src.shared.application.interfaces import IUnitOfWork
-from src.shared.infrastructure.database.session import SessionLocal
+from src.shared.infrastructure.database.session import AsyncSessionLocal
 
 
 class SQLAlchemyUnitOfWork(IUnitOfWork):
@@ -34,7 +34,7 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
         oficios: Repositorio de oficios (se agregará en el módulo oficios)
     """
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self, session: Optional[AsyncSession] = None):
         """
         Inicializa el Unit of Work.
 
@@ -47,7 +47,7 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
     async def __aenter__(self) -> "SQLAlchemyUnitOfWork":
         """Inicia el contexto de la transacción"""
         if self._owns_session:
-            self._session = SessionLocal()
+            self._session = AsyncSessionLocal()
 
         # Aquí se inicializarán los repositorios cuando los creemos
         # self.buffets = SQLAlchemyBuffetRepository(self._session)
@@ -66,20 +66,20 @@ class SQLAlchemyUnitOfWork(IUnitOfWork):
             await self.rollback()
 
         if self._owns_session and self._session:
-            self._session.close()
+            await self._session.close()
 
     async def commit(self) -> None:
         """Confirma la transacción"""
         if self._session:
-            self._session.commit()
+            await self._session.commit()
 
     async def rollback(self) -> None:
         """Revierte la transacción"""
         if self._session:
-            self._session.rollback()
+            await self._session.rollback()
 
     @property
-    def session(self) -> Session:
+    def session(self) -> AsyncSession:
         """Obtiene la sesión actual"""
         if self._session is None:
             raise RuntimeError("UnitOfWork no está inicializado. Use 'async with'.")
