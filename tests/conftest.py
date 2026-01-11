@@ -91,28 +91,27 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Fixture para sesión de base de datos de test.
 
-    Crea una sesión para cada test. Los datos se limpian mediante rollback al final.
+    Crea una sesión para cada test con una transacción explícita.
+    Los datos se limpian mediante rollback explícito al finalizar.
     NO hace commit, solo rollback para evitar que los datos persistan entre tests.
+
+    Con NullPool, cada sesión obtiene su propia conexión, por lo que necesitamos
+    transacciones explícitas para aislar los datos entre tests.
     """
     # Crear sesión
     async with TestAsyncSessionLocal() as session:
+        # Iniciar transacción explícita para aislar cada test
+        trans = await session.begin()
         try:
             yield session
         except Exception:
-            # Si hay error, intentar rollback
-            try:
-                await session.rollback()
-            except Exception:
-                pass  # Si la transacción ya está cerrada, ignorar
+            # Si hay error, hacer rollback de la transacción
+            await trans.rollback()
             raise
         finally:
-            # Siempre hacer rollback al final para limpiar datos
-            # NO hacer commit para que los datos no persistan entre tests
-            try:
-                await session.rollback()
-            except Exception:
-                pass  # Si la transacción ya está cerrada, ignorar
-            # session.close() se llama automáticamente por el async with
+            # Siempre hacer rollback para limpiar datos entre tests
+            # NO hacer commit para que los datos no persistan
+            await trans.rollback()
 
 
 @pytest.fixture(scope="function")
