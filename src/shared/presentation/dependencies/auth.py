@@ -21,7 +21,7 @@ settings = get_settings()
 
 # Esquema OAuth2 para obtener token del header
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    tokenUrl="/auth/login",
     auto_error=False,  # No lanzar error automático si no hay token
 )
 

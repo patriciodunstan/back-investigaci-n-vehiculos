@@ -37,7 +37,7 @@ from src.modules.usuarios.presentation.schemas import (
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def get_usuario_repository(db: AsyncSession = Depends(get_db)) -> UsuarioRepository:

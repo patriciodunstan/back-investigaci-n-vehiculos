@@ -375,7 +375,7 @@ async def auth_headers(test_client: AsyncClient, admin_user: Usuario) -> dict:
     Retorna headers con token JWT válido del admin_user.
     """
     response = await test_client.post(
-        "/api/v1/auth/login",
+        "/auth/login",
         data={
             "username": admin_user.email_str,
             "password": "admin123",

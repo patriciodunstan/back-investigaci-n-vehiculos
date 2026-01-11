@@ -109,34 +109,13 @@ app.add_middleware(LoggingMiddleware)
 
 
 # Registrar routers
-app.include_router(
-    auth_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    usuarios_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    buffet_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    oficio_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    investigacion_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    boostr_router,
-    prefix=settings.API_V1_STR,
-)
-app.include_router(
-    notificacion_router,
-    prefix=settings.API_V1_STR,
-)
+app.include_router(auth_router)
+app.include_router(usuarios_router)
+app.include_router(buffet_router)
+app.include_router(oficio_router)
+app.include_router(investigacion_router)
+app.include_router(boostr_router)
+app.include_router(notificacion_router)
 
 
 # Endpoints de sistema
@@ -157,7 +136,7 @@ async def root():
 
 
 @app.get(
-    f"{settings.API_V1_STR}/health",
+    "/health",
     tags=["Sistema"],
     summary="Health Check",
     description="Verifica el estado de la API",
@@ -172,7 +151,7 @@ async def health_check():
 
 
 @app.get(
-    f"{settings.API_V1_STR}/info",
+    "/info",
     tags=["Sistema"],
     summary="Informacion del sistema",
     description="Retorna informacion general del sistema",

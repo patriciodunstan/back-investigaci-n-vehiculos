@@ -16,7 +16,7 @@ class TestNotificacionesEndpoints:
         """Test crear notificación"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-009",
@@ -30,7 +30,7 @@ class TestNotificacionesEndpoints:
 
         # Crear notificación
         response = await test_client.post(
-            f"/api/v1/notificaciones/oficios/{oficio_id}/notificaciones",
+            f"/notificaciones/oficios/{oficio_id}/notificaciones",
             headers=auth_headers,
             json={
                 "tipo": "buffet",
@@ -53,7 +53,7 @@ class TestNotificacionesEndpoints:
         """Test listar notificaciones de un oficio"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-010",
@@ -67,7 +67,7 @@ class TestNotificacionesEndpoints:
 
         # Crear notificación
         await test_client.post(
-            f"/api/v1/notificaciones/oficios/{oficio_id}/notificaciones",
+            f"/notificaciones/oficios/{oficio_id}/notificaciones",
             headers=auth_headers,
             json={
                 "tipo": "buffet",
@@ -78,7 +78,7 @@ class TestNotificacionesEndpoints:
 
         # Listar notificaciones
         response = await test_client.get(
-            f"/api/v1/notificaciones/oficios/{oficio_id}/notificaciones",
+            f"/notificaciones/oficios/{oficio_id}/notificaciones",
             headers=auth_headers,
         )
 

@@ -17,7 +17,7 @@ class TestAuthEndpoints:
     async def test_register_user_exitoso(self, test_client, db_session):
         """Test registro exitoso de usuario"""
         response = await test_client.post(
-            "/api/v1/auth/register",
+            "/auth/register",
             json={
                 "email": "nuevo@test.com",
                 "password": "password123",
@@ -38,7 +38,7 @@ class TestAuthEndpoints:
     async def test_register_user_email_duplicado(self, test_client, admin_user):
         """Test que registro con email duplicado retorna error"""
         response = await test_client.post(
-            "/api/v1/auth/register",
+            "/auth/register",
             json={
                 "email": admin_user.email_str,
                 "password": "password123",
@@ -52,7 +52,7 @@ class TestAuthEndpoints:
     async def test_login_exitoso(self, test_client, admin_user):
         """Test login exitoso"""
         response = await test_client.post(
-            "/api/v1/auth/login",
+            "/auth/login",
             data={
                 "username": admin_user.email_str,
                 "password": "admin123",
@@ -70,7 +70,7 @@ class TestAuthEndpoints:
     async def test_login_json_exitoso(self, test_client, admin_user):
         """Test login usando JSON en lugar de form-data"""
         response = await test_client.post(
-            "/api/v1/auth/login/json",
+            "/auth/login/json",
             json={
                 "email": admin_user.email_str,
                 "password": "admin123",
@@ -85,7 +85,7 @@ class TestAuthEndpoints:
     async def test_login_credenciales_incorrectas(self, test_client):
         """Test login con credenciales incorrectas"""
         response = await test_client.post(
-            "/api/v1/auth/login",
+            "/auth/login",
             data={
                 "username": "noexiste@test.com",
                 "password": "password123",
@@ -98,7 +98,7 @@ class TestAuthEndpoints:
     async def test_get_current_user_exitoso(self, test_client, auth_headers):
         """Test obtención del usuario actual con token válido"""
         response = await test_client.get(
-            "/api/v1/auth/me",
+            "/auth/me",
             headers=auth_headers,
         )
 
@@ -112,7 +112,7 @@ class TestAuthEndpoints:
     @pytest.mark.asyncio
     async def test_get_current_user_sin_token(self, test_client):
         """Test que obtener usuario sin token retorna error"""
-        response = await test_client.get("/api/v1/auth/me")
+        response = await test_client.get("/auth/me")
 
         # Puede ser 401 o 403 dependiendo de la configuración
         assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]
@@ -121,7 +121,7 @@ class TestAuthEndpoints:
     async def test_get_current_user_token_invalido(self, test_client):
         """Test que obtener usuario con token inválido retorna error"""
         response = await test_client.get(
-            "/api/v1/auth/me",
+            "/auth/me",
             headers={"Authorization": "Bearer token_invalido"},
         )
 

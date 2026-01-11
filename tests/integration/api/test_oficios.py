@@ -15,7 +15,7 @@ class TestOficiosEndpoints:
     async def test_create_oficio_exitoso(self, test_client, auth_headers, test_buffet):
         """Test creación exitosa de oficio"""
         response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-001",
@@ -44,7 +44,7 @@ class TestOficiosEndpoints:
     async def test_create_oficio_con_propietarios(self, test_client, auth_headers, test_buffet):
         """Test creación de oficio con propietarios"""
         response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-002",
@@ -75,7 +75,7 @@ class TestOficiosEndpoints:
         """Test obtención de oficio por ID"""
         # Crear oficio primero
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-003",
@@ -89,7 +89,7 @@ class TestOficiosEndpoints:
 
         # Obtener oficio
         response = await test_client.get(
-            f"/api/v1/oficios/{oficio_id}",
+            f"/oficios/{oficio_id}",
             headers=auth_headers,
         )
 
@@ -102,7 +102,7 @@ class TestOficiosEndpoints:
     async def test_list_oficios(self, test_client, auth_headers, test_buffet):
         """Test listado de oficios"""
         response = await test_client.get(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
         )
 
@@ -118,7 +118,7 @@ class TestOficiosEndpoints:
         """Test agregar propietario a oficio existente"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-004",
@@ -132,7 +132,7 @@ class TestOficiosEndpoints:
 
         # Agregar propietario
         response = await test_client.post(
-            f"/api/v1/oficios/{oficio_id}/propietarios",
+            f"/oficios/{oficio_id}/propietarios",
             headers=auth_headers,
             json={
                 "rut": "98765432-1",
@@ -153,7 +153,7 @@ class TestOficiosEndpoints:
         """Test agregar dirección a oficio existente"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-005",
@@ -167,7 +167,7 @@ class TestOficiosEndpoints:
 
         # Agregar dirección
         response = await test_client.post(
-            f"/api/v1/oficios/{oficio_id}/direcciones",
+            f"/oficios/{oficio_id}/direcciones",
             headers=auth_headers,
             json={
                 "direccion": "Av. Providencia 1234",

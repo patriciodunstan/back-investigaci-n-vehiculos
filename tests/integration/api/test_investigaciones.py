@@ -18,7 +18,7 @@ class TestInvestigacionesEndpoints:
         """Test agregar actividad a oficio"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-006",
@@ -33,7 +33,7 @@ class TestInvestigacionesEndpoints:
 
         # Agregar actividad
         response = await test_client.post(
-            f"/api/v1/investigaciones/oficios/{oficio_id}/actividades",
+            f"/investigaciones/oficios/{oficio_id}/actividades",
             headers=auth_headers,
             json={
                 "tipo_actividad": "nota",
@@ -52,7 +52,7 @@ class TestInvestigacionesEndpoints:
         """Test obtener timeline de oficio"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-007",
@@ -67,7 +67,7 @@ class TestInvestigacionesEndpoints:
 
         # Agregar actividad
         await test_client.post(
-            f"/api/v1/investigaciones/oficios/{oficio_id}/actividades",
+            f"/investigaciones/oficios/{oficio_id}/actividades",
             headers=auth_headers,
             json={
                 "tipo_actividad": "nota",
@@ -77,7 +77,7 @@ class TestInvestigacionesEndpoints:
 
         # Obtener timeline
         response = await test_client.get(
-            f"/api/v1/investigaciones/oficios/{oficio_id}/timeline",
+            f"/investigaciones/oficios/{oficio_id}/timeline",
             headers=auth_headers,
         )
 
@@ -92,7 +92,7 @@ class TestInvestigacionesEndpoints:
         """Test agregar avistamiento"""
         # Crear oficio
         create_response = await test_client.post(
-            "/api/v1/oficios",
+            "/oficios",
             headers=auth_headers,
             json={
                 "numero_oficio": "OF-2024-008",
@@ -107,7 +107,7 @@ class TestInvestigacionesEndpoints:
 
         # Agregar avistamiento
         response = await test_client.post(
-            f"/api/v1/investigaciones/oficios/{oficio_id}/avistamientos",
+            f"/investigaciones/oficios/{oficio_id}/avistamientos",
             headers=auth_headers,
             json={
                 "fuente": "terreno",
