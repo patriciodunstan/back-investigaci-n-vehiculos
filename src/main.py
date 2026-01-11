@@ -74,9 +74,9 @@ app = FastAPI(
     - Notificaciones automaticas
     """,
     version="1.0.0",
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
-    openapi_url="/openapi.json" if settings.DEBUG else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
@@ -152,7 +152,7 @@ async def root():
         "app": settings.APP_NAME,
         "version": "1.0.0",
         "status": "running",
-        "docs": "/docs" if settings.DEBUG else "disabled",
+        "docs": "/docs",
     }
 
 
