@@ -93,7 +93,7 @@ async def cleanup_test_data():
     Fixture automático que limpia datos de test antes de cada test.
 
     Con NullPool y rollback, los datos pueden persistir entre tests.
-    Este fixture elimina los usuarios de test conocidos antes de cada test
+    Este fixture elimina los usuarios y buffets de test conocidos antes de cada test
     usando SQL directo con commit para garantizar la limpieza.
     """
     # Crear una sesión separada para el cleanup (con commit)
@@ -111,6 +111,16 @@ async def cleanup_test_data():
                 # Usar SQL directo con parámetros para evitar SQL injection
                 await cleanup_session.execute(
                     text("DELETE FROM usuarios WHERE email = :email"), {"email": email}
+                )
+
+            # Limpiar buffets de test conocidos
+            test_ruts = [
+                "12.345.678-5",  # RUT formateado usado en tests (formato normalizado de "12345678-5")
+            ]
+
+            for rut in test_ruts:
+                await cleanup_session.execute(
+                    text("DELETE FROM buffets WHERE rut = :rut"), {"rut": rut}
                 )
 
             await cleanup_session.commit()
@@ -131,6 +141,16 @@ async def cleanup_test_data():
             for email in test_emails:
                 await cleanup_session.execute(
                     text("DELETE FROM usuarios WHERE email = :email"), {"email": email}
+                )
+
+            # Limpiar buffets de test conocidos
+            test_ruts = [
+                "12.345.678-5",  # RUT formateado usado en tests (formato normalizado de "12345678-5")
+            ]
+
+            for rut in test_ruts:
+                await cleanup_session.execute(
+                    text("DELETE FROM buffets WHERE rut = :rut"), {"rut": rut}
                 )
 
             await cleanup_session.commit()
