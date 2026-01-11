@@ -28,13 +28,19 @@ RUN pip install --upgrade pip setuptools wheel && \
 # Copiar código
 COPY . .
 
+# Script de inicio que ejecuta migraciones y luego inicia el servidor
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
 # Crear usuario no-root
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app && \
+    chmod +x /docker-entrypoint.sh
 USER appuser
 
 # Exponer puerto
 EXPOSE 8000
 
 # Comando por defecto
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

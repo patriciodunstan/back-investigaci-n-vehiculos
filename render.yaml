@@ -4,23 +4,15 @@
 services:
   - type: web
     name: investigaciones-backend
-    env: python
-    # CRÍTICO: Render debe usar Python 3.12, no 3.13
-    # Configura esto también en el dashboard de Render: Settings → Environment → Python Version
-    pythonVersion: 3.12.7
+    env: docker
+    # Usar Docker para forzar Python 3.12.7 (especificado en Dockerfile)
+    # Esto evita problemas con Render usando Python 3.13 por defecto
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     region: oregon  # Cambia según tu preferencia: oregon, frankfurt, singapore
     plan: free  # Cambia a starter para producción ($7/mes)
-    buildCommand: |
-      echo "🐍 Verificando versión de Python..." &&
-      python --version &&
-      python -c "import sys; assert sys.version_info[:2] == (3, 12), f'ERROR: Se requiere Python 3.12, pero se está usando {sys.version}'; print('✅ Python 3.12 detectado correctamente')" &&
-      echo "📦 Instalando dependencias..." &&
-      pip install --upgrade pip setuptools wheel &&
-      pip install -r requirements.txt &&
-      echo "📊 Ejecutando migraciones de base de datos..." &&
-      alembic upgrade head &&
-      echo "✅ Build completado exitosamente"
-    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    # El Dockerfile ya incluye la instalación de dependencias y migraciones
+    # Si necesitas ejecutar migraciones después del build, puedes agregar un script de inicio
     envVars:
       - key: ENVIRONMENT
         value: production
