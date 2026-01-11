@@ -10,6 +10,7 @@ import asyncio
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy import select
 from httpx import AsyncClient
 
 # Configurar entorno de test antes de importar
@@ -84,6 +85,63 @@ async def setup_test_db():
             _tables_created = True
     yield
     # No eliminar tablas aquí, ya que los tests usan rollback para limpiar datos
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def cleanup_test_data():
+    """
+    Fixture automático que limpia datos de test antes de cada test.
+
+    Con NullPool y rollback, los datos pueden persistir entre tests.
+    Este fixture elimina los usuarios de test conocidos antes de cada test
+    usando una sesión separada con commit para garantizar la limpieza.
+    """
+    # Crear una sesión separada para el cleanup (con commit)
+    async with TestAsyncSessionLocal() as cleanup_session:
+        try:
+            from src.modules.usuarios.infrastructure.models import UsuarioModel
+
+            # Eliminar usuarios de test conocidos
+            test_emails = [
+                "admin@test.com",
+                "investigador@test.com",
+                "cliente@test.com",
+            ]
+
+            for email in test_emails:
+                stmt = select(UsuarioModel).where(UsuarioModel.email == email)
+                result = await cleanup_session.execute(stmt)
+                user = result.scalar_one_or_none()
+                if user:
+                    cleanup_session.delete(user)  # delete() no es async, solo flush/commit
+
+            await cleanup_session.commit()
+        except Exception:
+            await cleanup_session.rollback()
+
+    yield
+
+    # Cleanup después del test también (por si acaso)
+    async with TestAsyncSessionLocal() as cleanup_session:
+        try:
+            from src.modules.usuarios.infrastructure.models import UsuarioModel
+
+            test_emails = [
+                "admin@test.com",
+                "investigador@test.com",
+                "cliente@test.com",
+            ]
+
+            for email in test_emails:
+                stmt = select(UsuarioModel).where(UsuarioModel.email == email)
+                result = await cleanup_session.execute(stmt)
+                user = result.scalar_one_or_none()
+                if user:
+                    cleanup_session.delete(user)  # delete() no es async, solo flush/commit
+
+            await cleanup_session.commit()
+        except Exception:
+            await cleanup_session.rollback()
 
 
 @pytest.fixture(scope="function")
