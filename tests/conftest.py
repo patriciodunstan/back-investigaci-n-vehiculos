@@ -6,6 +6,7 @@ Este archivo contiene fixtures de pytest que se pueden usar en todos los tests.
 
 import os
 import pytest
+import asyncio
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from httpx import AsyncClient
@@ -63,28 +64,46 @@ TestAsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+# Lock para asegurar que las tablas se creen una sola vez
+_tables_created_lock = asyncio.Lock()
+_tables_created = False
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def setup_test_db():
+    """
+    Fixture de sesión que crea las tablas una vez al inicio de todos los tests.
+    """
+    global _tables_created
+    async with _tables_created_lock:
+        if not _tables_created:
+            # Crear todas las tablas
+            async with test_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+            _tables_created = True
+    yield
+    # No eliminar tablas aquí, ya que los tests usan rollback para limpiar datos
+
 
 @pytest.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Fixture para sesión de base de datos de test.
 
-    Crea las tablas una vez (checkfirst=True evita recrearlas).
-    No elimina tablas después de cada test para evitar conflictos de concurrencia con asyncpg.
+    Crea una sesión para cada test. Los datos se limpian mediante rollback.
     """
-    # Crear todas las tablas si no existen (checkfirst=True maneja la verificación)
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
-
     # Crear sesión
     async with TestAsyncSessionLocal() as session:
+        # Iniciar transacción
+        trans = await session.begin()
         try:
             yield session
-            await session.commit()
         except Exception:
-            await session.rollback()
+            await trans.rollback()
             raise
         finally:
+            # Siempre hacer rollback para limpiar datos
+            await trans.rollback()
             await session.close()
 
 
