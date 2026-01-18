@@ -381,7 +381,7 @@ async def get_person_vehicles(
 # =============================================================================
 
 
-@router.post(
+@router.get(
     "/investigar/vehiculo/{patente}",
     response_model=InvestigacionVehiculoResponse,
     summary="Investigación completa de vehículo",
@@ -497,7 +497,7 @@ async def investigar_vehiculo(
         )
 
 
-@router.post(
+@router.get(
     "/investigar/propietario/{rut}",
     response_model=InvestigacionPropietarioResponse,
     summary="Investigación completa de propietario",
