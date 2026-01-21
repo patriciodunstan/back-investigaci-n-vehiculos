@@ -119,7 +119,7 @@ class BoostrClient:
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Encoding": "gzip, deflate",  # Remover 'br' (Brotli) - puede causar problemas
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         }
@@ -193,7 +193,11 @@ class BoostrClient:
         logger.debug(f"Boostr request: {method} {url}")
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Configurar cliente con soporte para descompresión automática
+            async with httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+            ) as client:
                 response = await client.request(
                     method=method,
                     url=url,
@@ -219,15 +223,25 @@ class BoostrClient:
 
                 # Intentar parsear JSON con manejo de errores
                 try:
+                    # httpx maneja automáticamente la descompresión
+                    # Primero intentar json() directamente (más eficiente)
                     data = response.json()
                 except Exception as json_error:
-                    # Si falla el parseo, puede ser HTML o texto de error
-                    content_preview = response.text[:200] if hasattr(response, "text") else "N/A"
+                    # Si falla, intentar leer el texto primero
+                    try:
+                        text_content = response.text
+                        content_preview = text_content[:200] if text_content else "N/A"
+                    except Exception:
+                        # Si incluso leer el texto falla, puede ser contenido binario corrupto
+                        content_preview = f"[Binary content, {len(response.content)} bytes]"
+
                     content_type = response.headers.get("content-type", "N/A")
+                    content_encoding = response.headers.get("content-encoding", "none")
+
                     raise BoostrAPIError(
                         f"Boostr API devolvió respuesta inválida (status: {response.status_code}, "
-                        f"Content-Type: {content_type}): {str(json_error)}. "
-                        f"Respuesta: {content_preview}"
+                        f"Content-Type: {content_type}, Content-Encoding: {content_encoding}): "
+                        f"{str(json_error)}. Respuesta: {content_preview}"
                     )
 
                 # Verificar respuesta de error de Boostr
