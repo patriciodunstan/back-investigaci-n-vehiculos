@@ -124,6 +124,14 @@ class BoostrClient:
             "Pragma": "no-cache",
         }
         if self.api_key:
+            # Boostr API usa Authorization Bearer con el token
+            # Si el token ya tiene prefijo "Bearer", no agregarlo de nuevo
+            if self.api_key.startswith("Bearer "):
+                headers["Authorization"] = self.api_key
+            else:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
+            # También agregar x-api-key por si acaso (algunas APIs lo requieren)
             headers["x-api-key"] = self.api_key
         else:
             logger.error("❌ Intentando hacer request sin API key")
