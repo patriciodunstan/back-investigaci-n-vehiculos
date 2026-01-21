@@ -304,7 +304,7 @@ class BoostrClient:
         """
         Obtiene información de un vehículo por patente.
 
-        Endpoint: GET /vehicle/{patente}.json
+        Endpoint: GET /rut/vehicles/{rut}.json
 
         Args:
             patente: Patente del vehículo (ej: "ABCD12")
@@ -317,7 +317,7 @@ class BoostrClient:
             >>> print(f"{info.marca} {info.modelo} {info.año}")
         """
         patente = self._normalize_patente(patente)
-        data = await self._request("GET", f"/vehicle/{patente}")
+        data = await self._request("GET", f"/rut/vehicles/{patente}")
 
         if data.get("status") == "success" and data.get("data"):
             vehicle_data = data["data"]
