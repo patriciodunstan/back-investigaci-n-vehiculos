@@ -101,7 +101,8 @@ class TestBoostrClientImprovements:
             client = BoostrClient()
             headers = client._get_headers()
 
-            assert "sin API key" in caplog.text.lower()
+            # El mensaje está en mayúsculas: "sin API KEY"
+            assert "sin api key" in caplog.text.lower()
             assert "Authorization" not in headers or headers.get("Authorization") == "Bearer "
 
     def test_normalize_patente(self):
