@@ -36,6 +36,7 @@ from src.modules.investigaciones.infrastructure.repositories import (
 from src.modules.investigaciones.application.dtos import CreateActividadDTO
 from src.modules.investigaciones.application.use_cases import AddActividadUseCase
 from src.shared.domain.enums import TipoActividadEnum
+from src.core.config import get_settings
 
 
 logger = logging.getLogger(__name__)
@@ -612,3 +613,46 @@ async def investigar_propietario(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Error en servicio externo: {str(e)}",
         )
+
+
+# =============================================================================
+# ENDPOINT DE DIAGNÓSTICO (TEMPORAL - REMOVER EN PRODUCCIÓN)
+# =============================================================================
+
+
+@router.get(
+    "/debug/config",
+    summary="[DEBUG] Configuración de Boostr API",
+    description="Endpoint temporal para diagnosticar problemas con Boostr API. "
+    "⚠️ REMOVER EN PRODUCCIÓN - Expone información sensible.",
+)
+async def debug_boostr_config(
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Endpoint de diagnóstico para verificar configuración de Boostr.
+
+    ⚠️ TEMPORAL - Solo para debugging. Remover en producción.
+    """
+    settings = get_settings()
+
+    # Solo permitir a admins
+    if current_user.rol != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo administradores pueden acceder a este endpoint",
+        )
+
+    return {
+        "boostr_url": settings.BOOSTR_API_URL,
+        "api_key_configured": bool(settings.BOOSTR_API_KEY),
+        "api_key_length": len(settings.BOOSTR_API_KEY) if settings.BOOSTR_API_KEY else 0,
+        "api_key_preview": (
+            settings.BOOSTR_API_KEY[:10] + "..."
+            if settings.BOOSTR_API_KEY and len(settings.BOOSTR_API_KEY) > 10
+            else "NO CONFIGURADA"
+        ),
+        "timeout": settings.BOOSTR_TIMEOUT,
+        "environment": settings.ENVIRONMENT,
+        "user_rol": current_user.rol,
+    }

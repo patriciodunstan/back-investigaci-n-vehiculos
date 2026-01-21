@@ -95,7 +95,18 @@ class BoostrClient:
         self._request_times: List[datetime] = []
         self._lock = asyncio.Lock()
 
-        logger.info(f"BoostrClient inicializado con base_url={self.base_url}")
+        # Advertencia si no hay API key
+        if not self.api_key:
+            logger.warning(
+                "⚠️ BoostrClient inicializado SIN API KEY. "
+                "Las requests fallarán. Configure BOOSTR_API_KEY en variables de entorno."
+            )
+
+        logger.info(
+            f"BoostrClient inicializado: base_url={self.base_url}, "
+            f"api_key={'***' + self.api_key[-4:] if self.api_key and len(self.api_key) > 4 else 'NO CONFIGURADA'}, "
+            f"timeout={self.timeout}s"
+        )
 
     # =========================================================================
     # MÉTODOS PRIVADOS
@@ -106,9 +117,16 @@ class BoostrClient:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
         }
         if self.api_key:
             headers["x-api-key"] = self.api_key
+        else:
+            logger.error("❌ Intentando hacer request sin API key")
         return headers
 
     async def _wait_for_rate_limit(self) -> None:
