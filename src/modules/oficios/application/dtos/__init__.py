@@ -15,6 +15,11 @@ from .oficio_dto import (
     VisitaDireccionDTO,
     VisitaDireccionResponseDTO,
 )
+from .documento_extraido_dto import (
+    OficioExtraidoDTO,
+    CAVExtraidoDTO,
+    ParDocumentoDTO,
+)
 
 __all__ = [
     "VehiculoDTO",
@@ -30,4 +35,7 @@ __all__ = [
     "OficioResponseDTO",
     "VisitaDireccionDTO",
     "VisitaDireccionResponseDTO",
+    "OficioExtraidoDTO",
+    "CAVExtraidoDTO",
+    "ParDocumentoDTO",
 ]

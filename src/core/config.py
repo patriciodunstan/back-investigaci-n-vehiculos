@@ -78,6 +78,35 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
 
+    # =========================================================================
+    # PDF PROCESSING & DOCUMENT PAIRING
+    # =========================================================================
+
+    PDF_OCR_ENABLED: bool = False
+    """Habilita OCR para PDFs escaneados (requiere pytesseract)"""
+
+    PDF_OCR_LANGUAGE: str = "spa"
+    """Idioma para OCR (spa=español, eng=inglés)"""
+
+    PDF_MAX_SIZE_MB: int = 10
+    """Tamaño máximo de PDF en MB"""
+
+    PDF_PROCESSING_TIMEOUT_SECONDS: int = 300
+    """Timeout para procesamiento de PDF (5 minutos)"""
+
+    DOCUMENT_PAIR_TIMEOUT_HOURS: int = 24
+    """
+    Ventana de tiempo para emparejar documentos (Oficio + CAV).
+    Si un documento no encuentra su par en este tiempo, queda en ESPERANDO_PAR.
+    """
+
+    ENABLE_BOOSTR_AUTO_INVESTIGATION: bool = True
+    """
+    Habilita investigación automática con Boostr al crear oficios desde documentos.
+    Si es True, al procesar un par de documentos (Oficio + CAV), automáticamente
+    se ejecutará la investigación completa del vehículo usando la API de Boostr.
+    """
+
     @property
     def celery_broker(self) -> str:
         """URL del broker de Celery (usa REDIS_URL si no está definido)"""

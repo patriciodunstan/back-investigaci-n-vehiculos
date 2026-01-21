@@ -125,3 +125,39 @@ class TipoNotificacionEnum(str, Enum):
     RECEPTOR_JUDICIAL = "receptor_judicial"  # Email a receptor judicial
     BUFFET = "buffet"  # Email a buffet cliente
     INTERNA = "interna"  # Notificación interna del sistema
+
+
+class TipoDocumentoEnum(str, Enum):
+    """
+    Tipos de documentos procesables del sistema.
+
+    - OFICIO: Documento oficial del juzgado con orden de investigación
+    - CAV: Certificado de Anotaciones Vigentes del vehículo
+    - DESCONOCIDO: Documento sin clasificar
+    """
+
+    OFICIO = "oficio"
+    CAV = "cav"
+    DESCONOCIDO = "desconocido"
+
+
+class EstadoDocumentoProcesadoEnum(str, Enum):
+    """
+    Estados del ciclo de vida de un documento procesado.
+
+    Flujo típico:
+    PENDIENTE -> ESPERANDO_PAR -> PROCESANDO -> COMPLETADO
+                                              -> ERROR
+
+    - PENDIENTE: Documento subido, esperando procesamiento inicial
+    - ESPERANDO_PAR: Documento procesado, esperando su par (Oficio espera CAV o viceversa)
+    - PROCESANDO: Par completo encontrado, creando oficio
+    - COMPLETADO: Oficio creado exitosamente
+    - ERROR: Error durante el procesamiento
+    """
+
+    PENDIENTE = "pendiente"
+    ESPERANDO_PAR = "esperando_par"
+    PROCESANDO = "procesando"
+    COMPLETADO = "completado"
+    ERROR = "error"

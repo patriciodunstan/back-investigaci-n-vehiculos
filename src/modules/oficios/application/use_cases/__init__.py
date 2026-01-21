@@ -9,6 +9,7 @@ from .update_oficio import (
     AgregarPropietarioUseCase,
     AgregarDireccionUseCase,
 )
+from .create_oficio_from_document_pair import CreateOficioFromDocumentPairUseCase
 
 __all__ = [
     "CreateOficioUseCase",
@@ -18,4 +19,5 @@ __all__ = [
     "CambiarEstadoUseCase",
     "AgregarPropietarioUseCase",
     "AgregarDireccionUseCase",
+    "CreateOficioFromDocumentPairUseCase",
 ]
