@@ -42,8 +42,8 @@ class TestBoostrClient:
             assert client.api_key == ""
             assert "SIN API KEY" in caplog.text
 
-    def test_get_headers_with_api_key_includes_bearer(self):
-        """Test que los headers incluyen Authorization Bearer con API key."""
+    def test_get_headers_with_api_key_includes_x_api_key(self):
+        """Test que los headers incluyen X-API-KEY con API key."""
         with patch("src.shared.infrastructure.external_apis.boostr.client.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(
                 BOOSTR_API_URL="https://api.boostr.cl",
@@ -57,23 +57,23 @@ class TestBoostrClient:
             assert "Accept" in headers
             assert "Content-Type" in headers
             assert "User-Agent" in headers
-            assert "Authorization" in headers
-            assert headers["Authorization"] == "Bearer test_key_123"
+            assert "X-API-KEY" in headers
+            assert headers["X-API-KEY"] == "test_key_123"
 
-    def test_get_headers_with_bearer_prefix_doesnt_duplicate(self):
-        """Test que no duplica el prefijo Bearer si ya lo tiene."""
+    def test_get_headers_without_api_key(self):
+        """Test que los headers no incluyen X-API-KEY sin API key."""
         with patch("src.shared.infrastructure.external_apis.boostr.client.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(
                 BOOSTR_API_URL="https://api.boostr.cl",
-                BOOSTR_API_KEY="Bearer already_has_prefix",
+                BOOSTR_API_KEY="",
                 BOOSTR_TIMEOUT=30,
             )
 
             client = BoostrClient()
             headers = client._get_headers()
 
-            assert headers["Authorization"] == "Bearer already_has_prefix"
-            assert not headers["Authorization"].startswith("Bearer Bearer")
+            assert "X-API-KEY" not in headers
+            assert "Accept" in headers
 
     def test_normalize_rut(self):
         """Test que normaliza RUTs correctamente."""

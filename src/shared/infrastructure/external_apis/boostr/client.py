@@ -119,10 +119,7 @@ class BoostrClient:
         }
         if self.api_key:
             # Usar solo X-API-KEY (recomendado por Boostr)
-            # NO enviar Authorization Bearer para evitar duplicación de headers
             headers["X-API-KEY"] = self.api_key
-        return headers
-        # Si la API Key está vacía, retornar solo headers base
         return headers
 
     async def _wait_for_rate_limit(self) -> None:
