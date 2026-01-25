@@ -126,11 +126,40 @@ class OficioRepository(IOficioRepository):
         await self._session.flush()
         return vehiculo
 
+    async def exists_vehiculo_patente_in_oficio(self, oficio_id: int, patente: str) -> bool:
+        """Verifica si ya existe un vehículo con la misma patente en el oficio."""
+        from sqlalchemy import select, func
+
+        stmt = (
+            select(func.count())
+            .select_from(VehiculoModel)
+            .where(
+                VehiculoModel.oficio_id == oficio_id,
+                VehiculoModel.patente == patente.upper().replace(" ", "").replace("-", ""),
+            )
+        )
+        result = await self._session.execute(stmt)
+        count = result.scalar()
+        return count > 0
+
     async def add_propietario(self, propietario: PropietarioModel) -> PropietarioModel:
         """Agrega un propietario."""
         self._session.add(propietario)
         await self._session.flush()
         return propietario
+
+    async def exists_propietario_rut_in_oficio(self, oficio_id: int, rut: str) -> bool:
+        """Verifica si ya existe un propietario con el mismo RUT en el oficio."""
+        from sqlalchemy import select, func
+
+        stmt = (
+            select(func.count())
+            .select_from(PropietarioModel)
+            .where(PropietarioModel.oficio_id == oficio_id, PropietarioModel.rut == rut)
+        )
+        result = await self._session.execute(stmt)
+        count = result.scalar()
+        return count > 0
 
     async def add_direccion(self, direccion: DireccionModel) -> DireccionModel:
         """Agrega una direccion."""

@@ -2,7 +2,7 @@
 Caso de uso: Crear Oficio desde Par de Documentos (Local Storage).
 
 Combina datos extraídos de documentos PDF (Oficio + CAV) y crea
-un oficio completo en el sistema.
+un oficio completo en el sistema, enriqueciendo con datos de Boostr API.
 """
 
 import logging
@@ -26,6 +26,12 @@ from src.shared.domain.enums import (
     TipoAdjuntoEnum,
 )
 from src.shared.infrastructure.services import get_file_storage
+from src.shared.infrastructure.external_apis.boostr import (
+    get_boostr_client,
+    BoostrAPIError,
+    PersonProperty,
+    DeceasedInfo,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +42,9 @@ class CreateOficioFromDocumentPairUseCase:
     Caso de uso para crear un oficio desde un par de documentos (Oficio + CAV).
 
     Usa datos extraídos de los PDFs (Oficio + CAV) para crear el oficio.
+    Enriquece los datos con información de Boostr API:
+    - Propiedades del propietario (direcciones adicionales)
+    - Estado de defunción del propietario
     """
 
     def __init__(self, repository: IOficioRepository):
@@ -69,10 +78,26 @@ class CreateOficioFromDocumentPairUseCase:
         if not par_dto.cav_extraido.patente:
             raise ValueError("La patente del vehículo es requerida")
 
-        # Construir DTOs desde datos de los PDFs
+        # Obtener RUT del propietario para enriquecer con Boostr
+        rut_propietario = par_dto.oficio_extraido.rut_propietario
+
+        # Consultar Boostr para enriquecer datos
+        propiedades_boostr: list[PersonProperty] = []
+        info_defuncion: Optional[DeceasedInfo] = None
+
+        if rut_propietario:
+            propiedades_boostr, info_defuncion = await self._consultar_boostr(rut_propietario)
+
+        # Construir DTOs desde datos de los PDFs + Boostr
         vehiculo_dto = self._construir_vehiculo(par_dto.cav_extraido)
-        propietario_dto = self._construir_propietario(par_dto.oficio_extraido)
-        direcciones_dto = self._construir_direcciones(par_dto.oficio_extraido)
+        propietario_dto = self._construir_propietario(
+            par_dto.oficio_extraido,
+            info_defuncion,
+        )
+        direcciones_dto = self._construir_direcciones(
+            par_dto.oficio_extraido,
+            propiedades_boostr,
+        )
 
         # Crear CreateOficioDTO
         create_dto = CreateOficioDTO(
@@ -91,7 +116,7 @@ class CreateOficioFromDocumentPairUseCase:
 
         logger.info(
             f"Oficio creado desde documentos: {oficio_response.numero_oficio} "
-            f"(ID: {oficio_response.id})"
+            f"(ID: {oficio_response.id}, direcciones: {len(direcciones_dto)})"
         )
 
         # Guardar PDFs como adjuntos
@@ -102,6 +127,54 @@ class CreateOficioFromDocumentPairUseCase:
             )
 
         return oficio_response
+
+    async def _consultar_boostr(
+        self, rut: str
+    ) -> tuple[list[PersonProperty], Optional[DeceasedInfo]]:
+        """
+        Consulta Boostr API para obtener datos adicionales del propietario.
+
+        Args:
+            rut: RUT del propietario
+
+        Returns:
+            Tupla con (propiedades, info_defuncion)
+        """
+        propiedades: list[PersonProperty] = []
+        info_defuncion: Optional[DeceasedInfo] = None
+
+        try:
+            boostr_client = get_boostr_client()
+
+            # Verificar si el propietario falleció
+            try:
+                info_defuncion = await boostr_client.check_deceased(rut)
+                if info_defuncion.fallecido:
+                    logger.warning(
+                        f"ALERTA: Propietario {rut} está FALLECIDO "
+                        f"(fecha: {info_defuncion.fecha_defuncion})"
+                    )
+                else:
+                    logger.info(f"Propietario {rut} no registra defunción")
+            except BoostrAPIError as e:
+                logger.warning(f"No se pudo verificar defunción de {rut}: {e}")
+
+            # Obtener propiedades (direcciones adicionales)
+            try:
+                propiedades = await boostr_client.get_person_properties(rut)
+                if propiedades:
+                    logger.info(
+                        f"Boostr: {len(propiedades)} propiedades encontradas para {rut}"
+                    )
+                else:
+                    logger.info(f"Boostr: No se encontraron propiedades para {rut}")
+            except BoostrAPIError as e:
+                logger.warning(f"No se pudo obtener propiedades de {rut}: {e}")
+
+        except Exception as e:
+            logger.error(f"Error al consultar Boostr para {rut}: {e}")
+
+        return propiedades, info_defuncion
 
     async def _guardar_pdfs_como_adjuntos(
         self,
@@ -194,12 +267,20 @@ class CreateOficioFromDocumentPairUseCase:
             vin=cav_extraido.vin,
         )
 
-    def _construir_propietario(self, oficio_extraido) -> Optional[PropietarioDTO]:
+    def _construir_propietario(
+        self,
+        oficio_extraido,
+        info_defuncion: Optional[DeceasedInfo] = None,
+    ) -> Optional[PropietarioDTO]:
         """
         Construye PropietarioDTO desde datos del Oficio.
 
+        Si el propietario está fallecido (según Boostr), se agrega
+        una nota de alerta.
+
         Args:
             oficio_extraido: Datos extraídos del Oficio
+            info_defuncion: Información de defunción de Boostr
 
         Returns:
             PropietarioDTO o None si no hay datos suficientes
@@ -216,6 +297,12 @@ class CreateOficioFromDocumentPairUseCase:
         if oficio_extraido.direcciones:
             direccion_principal = oficio_extraido.direcciones[0]
 
+        # Construir nota con alerta de defunción si aplica
+        notas = None
+        if info_defuncion and info_defuncion.fallecido:
+            fecha = info_defuncion.fecha_defuncion or "fecha desconocida"
+            notas = f"⚠️ PROPIETARIO FALLECIDO (Boostr: {fecha})"
+
         return PropietarioDTO(
             rut=rut,
             nombre_completo=nombre_completo,
@@ -223,33 +310,84 @@ class CreateOficioFromDocumentPairUseCase:
             telefono=None,
             tipo=TipoPropietarioEnum.PRINCIPAL,
             direccion_principal=direccion_principal,
-            notas=None,
+            notas=notas,
         )
 
-    def _construir_direcciones(self, oficio_extraido) -> list[DireccionDTO]:
+    def _construir_direcciones(
+        self,
+        oficio_extraido,
+        propiedades_boostr: list[PersonProperty],
+    ) -> list[DireccionDTO]:
         """
-        Convierte direcciones extraídas del Oficio a DireccionDTO.
+        Convierte direcciones extraídas del Oficio a DireccionDTO
+        y agrega propiedades de Boostr como direcciones adicionales.
 
         Args:
             oficio_extraido: Datos extraídos del Oficio
+            propiedades_boostr: Propiedades obtenidas de Boostr API
 
         Returns:
-            Lista de DireccionDTO
+            Lista de DireccionDTO (del oficio + de Boostr)
         """
-        direcciones = []
+        direcciones: list[DireccionDTO] = []
+        direcciones_existentes: set[str] = set()
 
-        if not oficio_extraido.direcciones:
-            return direcciones
+        # 1. Direcciones del Oficio (prioridad)
+        if oficio_extraido.direcciones:
+            for direccion_str in oficio_extraido.direcciones:
+                direccion_normalizada = direccion_str.strip().upper()
+                if direccion_normalizada not in direcciones_existentes:
+                    direcciones.append(
+                        DireccionDTO(
+                            direccion=direccion_str,
+                            comuna=None,
+                            region=None,
+                            tipo=TipoDireccionEnum.DOMICILIO,
+                            notas="Dirección extraída del oficio",
+                        )
+                    )
+                    direcciones_existentes.add(direccion_normalizada)
 
-        for direccion_str in oficio_extraido.direcciones:
+        # 2. Direcciones de propiedades Boostr
+        for propiedad in propiedades_boostr:
+            if not propiedad.direccion:
+                continue
+
+            # Construir dirección completa
+            direccion_completa = propiedad.direccion
+            if propiedad.comuna:
+                direccion_completa = f"{direccion_completa}, {propiedad.comuna}"
+
+            direccion_normalizada = direccion_completa.strip().upper()
+
+            # Evitar duplicados
+            if direccion_normalizada in direcciones_existentes:
+                continue
+
+            # Construir nota con información adicional
+            notas_parts = ["Propiedad obtenida de Boostr"]
+            if propiedad.rol:
+                notas_parts.append(f"Rol: {propiedad.rol}")
+            if propiedad.destino:
+                notas_parts.append(f"Destino: {propiedad.destino}")
+            if propiedad.avaluo:
+                notas_parts.append(f"Avalúo: ${propiedad.avaluo:,.0f}")
+
             direcciones.append(
                 DireccionDTO(
-                    direccion=direccion_str,
-                    comuna=None,
+                    direccion=direccion_completa,
+                    comuna=propiedad.comuna,
                     region=None,
                     tipo=TipoDireccionEnum.DOMICILIO,
-                    notas=None,
+                    notas=" | ".join(notas_parts),
                 )
             )
+            direcciones_existentes.add(direccion_normalizada)
+
+        logger.info(
+            f"Direcciones construidas: {len(direcciones)} "
+            f"(oficio: {len(oficio_extraido.direcciones or [])}, "
+            f"boostr: {len(propiedades_boostr)})"
+        )
 
         return direcciones

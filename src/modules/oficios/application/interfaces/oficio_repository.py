@@ -73,8 +73,18 @@ class IOficioRepository(ABC):
         pass
 
     @abstractmethod
+    async def exists_vehiculo_patente_in_oficio(self, oficio_id: int, patente: str) -> bool:
+        """Verifica si ya existe un vehículo con la misma patente en el oficio."""
+        pass
+
+    @abstractmethod
     async def add_propietario(self, propietario: PropietarioModel) -> PropietarioModel:
         """Agrega un propietario."""
+        pass
+
+    @abstractmethod
+    async def exists_propietario_rut_in_oficio(self, oficio_id: int, rut: str) -> bool:
+        """Verifica si ya existe un propietario con el mismo RUT en el oficio."""
         pass
 
     @abstractmethod
@@ -98,8 +108,6 @@ class IOficioRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_visitas_by_direccion(
-        self, direccion_id: int
-    ) -> List[VisitaDireccionModel]:
+    async def get_visitas_by_direccion(self, direccion_id: int) -> List[VisitaDireccionModel]:
         """Obtiene el historial de visitas de una dirección."""
         pass

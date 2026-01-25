@@ -17,6 +17,7 @@ from src.modules.oficios.presentation.schemas.drive_webhook_schemas import (
     DriveProcessRequest,
     DriveWebhookResponse,
 )
+from tasks.workers.process_drive_document_pair import process_drive_document_pair_task
 # DISABLED: Google Drive integration removed
 # from tasks.workers.process_drive_document_pair import process_drive_document_pair_task
 

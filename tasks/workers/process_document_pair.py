@@ -300,23 +300,40 @@ async def _procesar_par_completo(
     # Crear oficio usando UseCase
     repository = OficioRepository(session)
     use_case = CreateOficioFromDocumentPairUseCase(repository)
-    oficio_response = await use_case.execute(par_dto)
+    
+    # Intentar crear oficio (puede fallar por numero de oficio duplicado)
+    try:
+        oficio_response = await use_case.execute(par_dto)
 
-    # Actualizar estados
-    doc_procesado.estado = EstadoDocumentoProcesadoEnum.COMPLETADO
-    doc_procesado.oficio_id = oficio_response.id
-    doc_procesado.par_documento_id = par_documento.id
+        # Actualizar estados
+        doc_procesado.estado = EstadoDocumentoProcesadoEnum.COMPLETADO
+        doc_procesado.oficio_id = oficio_response.id
+        doc_procesado.par_documento_id = par_documento.id
 
-    par_documento.estado = EstadoDocumentoProcesadoEnum.COMPLETADO
-    par_documento.oficio_id = oficio_response.id
-    par_documento.par_documento_id = doc_procesado.id
+        par_documento.estado = EstadoDocumentoProcesadoEnum.COMPLETADO
+        par_documento.oficio_id = oficio_response.id
+        par_documento.par_documento_id = doc_procesado.id
 
-    await session.commit()
+        await session.commit()
 
-    return {
-        "status": "completed",
-        "message": "Par procesado exitosamente",
-        "oficio_id": oficio_response.id,
-        "file_id": doc_procesado.file_id,
-        "par_file_id": par_documento.file_id,
-    }
+        return {
+            "status": "completed",
+            "message": "Par procesado exitosamente",
+            "oficio_id": oficio_response.id,
+            "file_id": doc_procesado.file_id,
+            "par_file_id": par_documento.file_id,
+        }
+    except NumeroOficioAlreadyExistsException as e:
+        # Actualizar estado a error en ambos documentos
+        doc_procesado.estado = EstadoDocumentoProcesadoEnum.ERROR
+        doc_procesado.error_mensaje = f"El número de oficio ya existe: {e.message}"
+        par_documento.estado = EstadoDocumentoProcesadoEnum.ERROR
+        par_documento.error_mensaje = f"El número de oficio ya existe: {e.message}"
+        await session.commit()
+        
+        return {
+            "status": "error",
+            "message": f"El número de oficio '{e.numero_oficio}' ya existe en el sistema",
+            "file_id": file_id,
+            "error_code": "OFICIO_DUPLICADO",
+        }

@@ -37,6 +37,9 @@ class PropietarioModel(Base):
 
     Relationships:
         oficio: Oficio al que pertenece
+
+    Business Rules:
+        - Un mismo RUT puede agregarse múltiples veces al mismo oficio (duplicados permitidos)
     """
 
     __tablename__ = "propietarios"

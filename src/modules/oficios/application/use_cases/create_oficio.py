@@ -16,7 +16,11 @@ from src.modules.oficios.infrastructure.models import (
     PropietarioModel,
     DireccionModel,
 )
-from src.modules.oficios.domain.exceptions import NumeroOficioAlreadyExistsException
+from src.modules.oficios.domain.exceptions import (
+    NumeroOficioAlreadyExistsException,
+    VehiculoYaExisteException,
+    PropietarioYaExisteException,
+)
 
 
 class CreateOficioUseCase:
@@ -42,10 +46,18 @@ class CreateOficioUseCase:
 
         oficio_creado = await self._repository.add(oficio)
 
+        # Verificar que la patente no exista ya en el oficio
+        patente_normalizada = dto.vehiculo.patente.upper().replace(" ", "").replace("-", "")
+        if await self._repository.exists_vehiculo_patente_in_oficio(
+            oficio_creado.id,
+            patente_normalizada
+        ):
+            raise VehiculoYaExisteException(dto.vehiculo.patente, oficio_creado.id)
+
         # Crear vehiculo
         vehiculo = VehiculoModel(
             oficio_id=oficio_creado.id,
-            patente=dto.vehiculo.patente.upper().replace(" ", "").replace("-", ""),
+            patente=patente_normalizada,
             marca=dto.vehiculo.marca,
             modelo=dto.vehiculo.modelo,
             año=dto.vehiculo.año,
@@ -58,6 +70,13 @@ class CreateOficioUseCase:
         propietarios_creados = []
         if dto.propietarios:
             for p in dto.propietarios:
+                # Verificar que el RUT no exista ya en el oficio
+                if await self._repository.exists_propietario_rut_in_oficio(
+                    oficio_creado.id,
+                    p.rut
+                ):
+                    raise PropietarioYaExisteException(p.rut, oficio_creado.id)
+                
                 prop = PropietarioModel(
                     oficio_id=oficio_creado.id,
                     rut=p.rut,

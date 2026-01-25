@@ -29,6 +29,9 @@ class VehiculoModel(Base):
 
     Relationships:
         oficio: Oficio al que pertenece este vehículo
+
+    Business Rules:
+        - Un mismo vehículo puede agregarse múltiples veces al mismo oficio (duplicados permitidos)
     """
 
     __tablename__ = "vehiculos"
