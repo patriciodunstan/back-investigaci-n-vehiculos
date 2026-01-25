@@ -20,6 +20,13 @@ from datetime import datetime
 import httpx
 
 from src.core.config import get_settings
+from src.core.logging_config import (
+    log_http_request,
+    log_http_response,
+    log_boostr_request,
+    log_boostr_response,
+    get_logger,
+)
 from .schemas import (
     PersonVehicle,
     PersonProperty,
@@ -36,7 +43,7 @@ from .exceptions import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BoostrClient:
@@ -161,16 +168,18 @@ class BoostrClient:
         Raises:
             BoostrAPIError: En caso de error
         """
+        # Loguear request saliente
+        rut_normalizado = endpoint.split('/')[-1].replace('.json', '') if '/rut/' in endpoint else params.get('rut', 'N/A')
+        log_boostr_request(logger, endpoint, rut_normalizado, self.base_url)
+
         await self._wait_for_rate_limit()
 
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-
         if not url.endswith(".json"):
             url += ".json"
 
-        logger.debug(f"Boostr request: {method} {url}")
-
         try:
+            start_time = datetime.utcnow()
             async with httpx.AsyncClient(
                 timeout=self.timeout,
                 follow_redirects=True,
@@ -181,7 +190,13 @@ class BoostrClient:
                     headers=self._get_headers(),
                     params=params,
                 )
+                end_time = datetime.utcnow()
+                duration_ms = (end_time - start_time).total_seconds() * 1000
 
+                # Loguear response entrante
+                log_http_response(logger, response.status_code, duration_ms, response.content)
+
+                # Evaluar status code
                 if response.status_code == 401:
                     raise BoostrAuthenticationError("API Key inválida o sin créditos disponibles")
                 elif response.status_code == 429:
@@ -200,6 +215,7 @@ class BoostrClient:
                     data = response.json()
                 except Exception as json_error:
                     content_preview = response.text[:200] if response.text else "N/A"
+                    logger.error(f"❌ Error parseando JSON: {str(json_error)}. Preview: {content_preview}")
                     raise BoostrAPIError(
                         f"Respuesta inválida de Boostr (status: {response.status_code}): "
                         f"{str(json_error)}. Preview: {content_preview}"
@@ -209,13 +225,16 @@ class BoostrClient:
                     error_msg = data.get("message") or data.get("data") or "Error desconocido"
                     if "invalid" in error_msg.lower() or "inválido" in error_msg.lower():
                         raise BoostrValidationError(error_msg)
+                    logger.error(f"❌ Error de validación Boostr: {error_msg}")
                     raise BoostrAPIError(error_msg)
 
                 return data
 
         except httpx.TimeoutException:
+            logger.error(f"❌ Timeout error en request a {url}")
             raise BoostrTimeoutError()
         except httpx.RequestError as e:
+            logger.error(f"❌ Connection error: {str(e)}")
             raise BoostrAPIError(f"Error de conexión: {str(e)}")
 
     def _normalize_rut(self, rut: str) -> str:
@@ -271,7 +290,7 @@ class BoostrClient:
             if data.get("status") == "success" and data.get("data"):
                 vehicles_data = data["data"]
                 if isinstance(vehicles_data, list):
-                    return [
+                    vehicles = [
                         PersonVehicle(
                             patente=v.get("plate") or v.get("patente"),
                             marca=v.get("brand") or v.get("marca"),
@@ -281,9 +300,25 @@ class BoostrClient:
                         )
                         for v in vehicles_data
                     ]
+                    # Loguear resultado exitoso
+                    log_boostr_response(
+                        logger, rut=rut, 
+                        vehicles_count=len(vehicles), 
+                        properties_count=0, 
+                        deceased=False
+                    )
+                    return vehicles
 
+            # Loguear respuesta vacía
+            log_boostr_response(
+                logger, rut=rut,
+                vehicles_count=0,
+                properties_count=0,
+                deceased=False
+            )
             return []
         except BoostrNotFoundError:
+            logger.warning(f"⚠️ Vehículos no encontrados para RUT {rut}")
             return []
 
     async def get_person_properties(self, rut: str) -> List[PersonProperty]:
@@ -311,7 +346,7 @@ class BoostrClient:
             if data.get("status") == "success" and data.get("data"):
                 props_data = data["data"]
                 if isinstance(props_data, list):
-                    return [
+                    properties = [
                         PersonProperty(
                             rol=p.get("rol"),
                             comuna=p.get("comuna"),
@@ -321,9 +356,26 @@ class BoostrClient:
                         )
                         for p in props_data
                     ]
+                    # Loguear resultado exitoso
+                    log_boostr_response(
+                        logger, rut=rut,
+                        vehicles_count=0,
+                        properties_count=len(properties),
+                        deceased=False
+                    )
+                    return properties
 
+            # Loguear respuesta vacía
+            log_boostr_response(
+                logger, rut=rut,
+                vehicles_count=0,
+                properties_count=0,
+                deceased=False
+            )
             return []
+
         except BoostrNotFoundError:
+            logger.warning(f"⚠️ Propiedades no encontradas para RUT {rut}")
             return []
 
     async def check_deceased(self, rut: str) -> DeceasedInfo:

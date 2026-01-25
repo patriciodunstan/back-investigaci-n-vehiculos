@@ -383,3 +383,146 @@ async def auth_headers(test_client: AsyncClient, admin_user: Usuario) -> dict:
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+# ============================================================================
+# Fixtures para tests de documentos procesados
+# ============================================================================
+
+@pytest.fixture
+def mock_pdf_bytes() -> bytes:
+    """
+    Fixture que retorna bytes de un PDF mínimo válido.
+    """
+    # PDF mínimo válido (header + estructura básica)
+    return b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF"
+
+
+@pytest.fixture
+def mock_oficio_text() -> str:
+    """
+    Fixture que retorna texto simulado de un documento Oficio.
+    """
+    return """
+    JUZGADO DE LETRAS DE SANTIAGO
+
+    OFICIO N° 1234/2024
+
+    Santiago, 15 de enero de 2024
+
+    Señor Director del Registro Civil
+
+    En causa ROL C-5678-2024, se solicita información sobre:
+
+    PROPIETARIO: Juan Carlos Pérez González
+    RUT: 12.345.678-9
+    DOMICILIO: Av. Providencia 1234, Depto 501, Providencia
+
+    Se requiere investigación de vehículo con patente ABCD12.
+
+    Saluda atentamente,
+    JUEZ TITULAR
+    """
+
+
+@pytest.fixture
+def mock_cav_text() -> str:
+    """
+    Fixture que retorna texto simulado de un documento CAV.
+    """
+    return """
+    CERTIFICADO DE INSCRIPCIÓN Y ANOTACIONES VIGENTES
+
+    DATOS DEL VEHÍCULO
+
+    Patente: ABCD12
+    Marca: TOYOTA
+    Modelo: COROLLA
+    Año: 2020
+    Color: BLANCO
+    VIN: JTDKARFH8J5087562
+    Tipo: AUTOMÓVIL
+    Combustible: BENCINA
+
+    PROPIETARIO INSCRITO
+    Nombre: Juan Carlos Pérez González
+    RUT: 12.345.678-9
+
+    Fecha emisión: 15/01/2024
+    """
+
+
+@pytest.fixture
+async def documento_oficio_pendiente(db_session: AsyncSession, test_buffet) -> "DocumentoProcesadoModel":
+    """
+    Fixture que crea un documento de tipo OFICIO en estado PENDIENTE.
+    """
+    from src.modules.oficios.infrastructure.models.documento_procesado_model import DocumentoProcesadoModel
+    from src.shared.domain.enums import TipoDocumentoEnum, EstadoDocumentoProcesadoEnum
+    import uuid
+
+    doc = DocumentoProcesadoModel(
+        file_id=str(uuid.uuid4()).replace("-", ""),
+        file_name="oficio_test.pdf",
+        storage_path="2024/01/test_oficio.pdf",
+        tipo_documento=TipoDocumentoEnum.OFICIO,
+        estado=EstadoDocumentoProcesadoEnum.PENDIENTE,
+        buffet_id=test_buffet.id,
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    await db_session.refresh(doc)
+    return doc
+
+
+@pytest.fixture
+async def documento_cav_pendiente(db_session: AsyncSession, test_buffet) -> "DocumentoProcesadoModel":
+    """
+    Fixture que crea un documento de tipo CAV en estado PENDIENTE.
+    """
+    from src.modules.oficios.infrastructure.models.documento_procesado_model import DocumentoProcesadoModel
+    from src.shared.domain.enums import TipoDocumentoEnum, EstadoDocumentoProcesadoEnum
+    import uuid
+
+    doc = DocumentoProcesadoModel(
+        file_id=str(uuid.uuid4()).replace("-", ""),
+        file_name="cav_test.pdf",
+        storage_path="2024/01/test_cav.pdf",
+        tipo_documento=TipoDocumentoEnum.CAV,
+        estado=EstadoDocumentoProcesadoEnum.PENDIENTE,
+        buffet_id=test_buffet.id,
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    await db_session.refresh(doc)
+    return doc
+
+
+@pytest.fixture
+async def documento_oficio_esperando_par(db_session: AsyncSession, test_buffet) -> "DocumentoProcesadoModel":
+    """
+    Fixture que crea un documento de tipo OFICIO en estado ESPERANDO_PAR.
+    """
+    from src.modules.oficios.infrastructure.models.documento_procesado_model import DocumentoProcesadoModel
+    from src.shared.domain.enums import TipoDocumentoEnum, EstadoDocumentoProcesadoEnum
+    import uuid
+    import json
+
+    doc = DocumentoProcesadoModel(
+        file_id=str(uuid.uuid4()).replace("-", ""),
+        file_name="oficio_esperando.pdf",
+        storage_path="2024/01/test_oficio_esperando.pdf",
+        tipo_documento=TipoDocumentoEnum.OFICIO,
+        estado=EstadoDocumentoProcesadoEnum.ESPERANDO_PAR,
+        buffet_id=test_buffet.id,
+        datos_extraidos_json=json.dumps({
+            "numero_oficio": "1234/2024",
+            "rut_propietario": "12.345.678-9",
+            "nombre_propietario": "Juan Pérez",
+            "direcciones": ["Av. Providencia 1234"],
+        }),
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    await db_session.refresh(doc)
+    return doc

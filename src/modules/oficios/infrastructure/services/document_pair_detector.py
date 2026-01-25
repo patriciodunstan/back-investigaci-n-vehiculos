@@ -112,7 +112,7 @@ class DocumentPairDetector:
         stmt = stmt.limit(10)  # Limitar resultados para performance
 
         result = await self._session.execute(stmt)
-        candidatos = list(result.scalars().all())
+        candidatos = list(result.unique().scalars().all())
 
         if candidatos:
             # Por ahora, retornar el más reciente
@@ -176,7 +176,7 @@ class DocumentPairDetector:
         stmt = stmt.limit(10)
 
         result = await self._session.execute(stmt)
-        candidatos = list(result.scalars().all())
+        candidatos = list(result.unique().scalars().all())
 
         if candidatos:
             # Por ahora, retornar el más reciente

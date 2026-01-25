@@ -70,8 +70,10 @@ class Settings(BaseSettings):
     CELERITY_BROKER_URL: Optional[str] = None
     CELERITY_RESULT_BACKEND: Optional[str] = None
 
-    LOG_LEVEL: str = "INFO"
-
+    LOG_LEVEL: str = "DEBUG"  # Cambiar a DEBUG para ver más detalles
+    LOG_FORMAT: str = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"  # Formato legible de logs
+    LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"  # Formato de fecha
+    
     # TestSprite (testing automatizado)
     TESTSPRITE_API_KEY: Optional[str] = None
 

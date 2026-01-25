@@ -36,6 +36,7 @@ from src.shared.domain.enums import (
     EstadoDocumentoProcesadoEnum,
 )
 from src.core.config import get_settings
+from src.modules.oficios.domain.exceptions import NumeroOficioAlreadyExistsException
 
 
 logger = logging.getLogger(__name__)
@@ -334,6 +335,6 @@ async def _procesar_par_completo(
         return {
             "status": "error",
             "message": f"El número de oficio '{e.numero_oficio}' ya existe en el sistema",
-            "file_id": file_id,
+            "file_id": doc_procesado.file_id,
             "error_code": "OFICIO_DUPLICADO",
         }

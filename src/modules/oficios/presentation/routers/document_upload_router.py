@@ -11,7 +11,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database.session import get_db
@@ -40,6 +40,17 @@ def get_storage_service():
     return get_file_storage()
 
 
+async def _process_document_in_background(file_id: str) -> None:
+    """Procesa un documento en background."""
+    from tasks.workers.process_document_pair import process_document_pair_task
+
+    try:
+        result = await process_document_pair_task(file_id)
+        logger.info(f"Documento {file_id} procesado: {result.get('status')}")
+    except Exception as e:
+        logger.error(f"Error procesando documento {file_id}: {e}", exc_info=True)
+
+
 @router.post(
     "/upload-batch",
     response_model=BatchUploadResponse,
@@ -54,6 +65,7 @@ async def upload_batch(
     db: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
     storage_service=Depends(get_storage_service),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> BatchUploadResponse:
     """
     Sube múltiples documentos PDF para procesamiento.
@@ -165,13 +177,9 @@ async def upload_batch(
                 task_id = f"{file_id}_{datetime.utcnow().timestamp()}"
                 task_ids.append(task_id)
 
-                # NOTA: En producción, aquí se debería encolar la tarea con Celery:
-                # from tasks.workers.process_document_pair import process_document_pair_task
-                # process_document_pair_task.delay(file_id)
-                #
-                # Por ahora, el procesamiento se hará de forma asíncrona cuando
-                # se llame al endpoint o mediante un job programado
-                logger.info(f"Documento {file_id} guardado, listo para procesamiento")
+                # Disparar procesamiento en background
+                background_tasks.add_task(_process_document_in_background, file_id)
+                logger.info(f"Documento {file_id} guardado, procesamiento iniciado en background")
 
                 processed_files.append(
                     DocumentUploadInfo(
