@@ -89,7 +89,7 @@ def get_boostr() -> BoostrClient:
 
 
 @router.get(
-    "/rut/{rut}/vehiculos",
+    "/rut/vehicles/{rut}",
     response_model=list[VehiculoResponse],
     summary="Consultar vehículos por RUT",
     description="Obtiene todos los vehículos registrados a nombre de un RUT.",
@@ -153,7 +153,7 @@ async def get_vehiculos_por_rut(
 
 
 @router.get(
-    "/rut/{rut}/propiedades",
+    "/rut/properties/{rut}",
     response_model=list[PropiedadResponse],
     summary="Consultar propiedades por RUT",
     description="Obtiene todas las propiedades (bienes raíces) registradas a nombre de un RUT.",
@@ -217,7 +217,99 @@ async def get_propiedades_por_rut(
 
 
 @router.get(
-    "/rut/{rut}/defuncion",
+    "/investigar/propietario/{rut}",
+    response_model=dict,
+    summary="Investigar propietario completo",
+    description="Obtiene toda la información de un propietario: vehículos, propiedades y defunción en una sola llamada.",
+    responses={
+        400: {"model": BoostrErrorResponse, "description": "RUT inválido"},
+        429: {"model": BoostrErrorResponse, "description": "Rate limit excedido"},
+        502: {"model": BoostrErrorResponse, "description": "Error en servicio externo"},
+    },
+)
+async def investigar_propietario(
+    rut: str,
+    client: BoostrClient = Depends(get_boostr),
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Investiga un propietario combinando todas las consultas de Boostr.
+
+    **Parámetros:**
+    - `rut`: RUT de la persona (ej: 12.345.678-9)
+
+    **Retorna:**
+    - Dict con toda la información:
+        - `vehiculos`: Lista de vehículos
+        - `propiedades`: Lista de propiedades
+        - `fallecido`: Estado de defunción
+        - `fecha_defuncion`: Fecha de defunción si aplica
+
+    **Consume 3 créditos de Boostr.**
+    """
+    try:
+        # Ejecutar las 3 consultas en paralelo (esperar todas)
+        import asyncio
+
+        vehicles_future = client.get_person_vehicles(rut)
+        properties_future = client.get_person_properties(rut)
+        deceased_future = client.check_deceased(rut)
+
+        vehicles, properties, deceased_info = await asyncio.gather(
+            vehicles_future, properties_future, deceased_future
+        )
+
+        return {
+            "rut": rut,
+            "vehiculos": [
+                {
+                    "patente": v.patente,
+                    "marca": v.marca,
+                    "modelo": v.modelo,
+                    "año": v.año,
+                    "tipo": v.tipo,
+                }
+                for v in vehicles
+            ],
+            "propiedades": [
+                {
+                    "rol": p.rol,
+                    "comuna": p.comuna,
+                    "direccion": p.direccion,
+                    "destino": p.destino,
+                    "avaluo": p.avaluo,
+                }
+                for p in properties
+            ],
+            "fallecido": deceased_info.fallecido,
+            "fecha_defuncion": deceased_info.fecha_defuncion,
+        }
+
+    except BoostrValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"RUT inválido: {rut}",
+        )
+    except BoostrRateLimitError:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit excedido. Intente en 1 minuto.",
+        )
+    except BoostrAuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Error de autenticación con Boostr API",
+        )
+    except BoostrAPIError as e:
+        logger.error(f"Error investigando propietario {rut}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error en servicio externo: {str(e)}",
+        )
+
+
+@router.get(
+    "/rut/deceased/{rut}",
     response_model=DefuncionResponse,
     summary="Verificar defunción por RUT",
     description="Verifica si una persona ha fallecido según registros oficiales.",
