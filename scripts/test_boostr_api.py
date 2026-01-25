@@ -2,7 +2,7 @@
 Script de prueba para verificar la conexión con la API de Boostr.
 
 Uso:
-    python scripts/test_boostr_api.py
+    python scripts/test_boostr_api.py [API_KEY] [RUT]
 
 Asegúrate de tener configurada la variable de entorno BOOSTR_API_KEY
 o pasarla directamente al script.
@@ -19,156 +19,151 @@ from src.shared.infrastructure.external_apis.boostr import (
     BoostrClient,
     BoostrAPIError,
     BoostrAuthenticationError,
-    BoostrNotFoundError,
 )
 
 
 async def test_boostr_connection():
     """Prueba la conexión con la API de Boostr."""
-    
+
     print("=" * 60)
-    print("🚀 Test de conexión con Boostr API")
+    print("Test de conexion con Boostr API (Rutificador)")
     print("=" * 60)
-    
-    # Crear cliente (usará las variables de entorno)
+
     client = BoostrClient()
-    
-    print(f"\n📡 URL Base: {client.base_url}")
-    print(f"🔑 API Key configurada: {'Sí' if client.api_key else 'No'}")
-    
+
+    print(f"\nURL Base: {client.base_url}")
+    print(f"API Key configurada: {'Si' if client.api_key else 'No'}")
+
     if not client.api_key:
-        print("\n❌ ERROR: No hay API Key configurada.")
+        print("\nERROR: No hay API Key configurada.")
         print("   Configura la variable de entorno BOOSTR_API_KEY")
         return False
-    
+
     print("\n" + "-" * 60)
-    
-    # Test 1: Consultar un RUT de prueba (nombre)
-    print("\n📋 Test 1: Obtener nombre por RUT (16.163.631-2)")
+
+    # RUT de prueba
+    test_rut = "7.342.646-4"
+
+    # Test 1: Vehículos por RUT
+    print(f"\nTest 1: Vehiculos asociados a RUT {test_rut}")
     try:
-        person = await client.get_person_name("16.163.631-2")
-        print(f"   ✅ Nombre: {person.nombre}")
-        print(f"   ✅ Crédito usado: 1")
-    except BoostrNotFoundError:
-        print("   ⚠️ RUT no encontrado (esto puede ser normal)")
-    except BoostrAuthenticationError as e:
-        print(f"   ❌ Error de autenticación: {e}")
-        return False
-    except BoostrAPIError as e:
-        print(f"   ❌ Error: {e}")
-    
-    print("\n" + "-" * 60)
-    
-    # Test 2: Consultar información completa de persona
-    print("\n👤 Test 2: Información completa de persona")
-    try:
-        person_info = await client.get_person_info("16.163.631-2")
-        print(f"   ✅ Nombre completo: {person_info.nombre}")
-        if person_info.genero:
-            print(f"   ✅ Género: {person_info.genero}")
-        if person_info.nacionalidad:
-            print(f"   ✅ Nacionalidad: {person_info.nacionalidad}")
-        print(f"   ✅ Crédito usado: 1")
-    except BoostrNotFoundError:
-        print("   ⚠️ Persona no encontrada")
-    except BoostrAPIError as e:
-        print(f"   ❌ Error: {e}")
-    
-    print("\n" + "-" * 60)
-    
-    # Test 3: Consultar vehículos de una persona
-    print("\n🚗 Test 3: Vehículos asociados a un RUT")
-    try:
-        vehicles = await client.get_person_vehicles("7.342.646-4")
+        vehicles = await client.get_person_vehicles(test_rut)
         if vehicles:
-            print(f"   ✅ Vehículos encontrados: {len(vehicles)}")
-            for v in vehicles[:3]:  # Mostrar máximo 3
+            print(f"   OK - Vehiculos encontrados: {len(vehicles)}")
+            for v in vehicles[:3]:
                 print(f"      - {v.patente}: {v.marca} {v.modelo} ({v.año})")
         else:
-            print("   ⚠️ No se encontraron vehículos")
-        print(f"   ✅ Crédito usado: 1")
+            print("   INFO - No se encontraron vehiculos")
+        print("   Credito usado: 1")
+    except BoostrAuthenticationError as e:
+        print(f"   ERROR de autenticacion: {e}")
+        return False
     except BoostrAPIError as e:
-        print(f"   ❌ Error: {e}")
-    
+        print(f"   ERROR: {e}")
+
     print("\n" + "-" * 60)
-    
+
+    # Test 2: Propiedades por RUT
+    print(f"\nTest 2: Propiedades asociadas a RUT {test_rut}")
+    try:
+        properties = await client.get_person_properties(test_rut)
+        if properties:
+            print(f"   OK - Propiedades encontradas: {len(properties)}")
+            for p in properties[:3]:
+                print(f"      - {p.direccion}, {p.comuna}")
+        else:
+            print("   INFO - No se encontraron propiedades")
+        print("   Credito usado: 1")
+    except BoostrAPIError as e:
+        print(f"   ERROR: {e}")
+
+    print("\n" + "-" * 60)
+
+    # Test 3: Verificar defunción
+    print(f"\nTest 3: Verificar defuncion para RUT {test_rut}")
+    try:
+        deceased = await client.check_deceased(test_rut)
+        print(f"   OK - Fallecido: {'Si' if deceased.fallecido else 'No'}")
+        if deceased.fecha_defuncion:
+            print(f"   Fecha: {deceased.fecha_defuncion}")
+        print("   Credito usado: 1")
+    except BoostrAPIError as e:
+        print(f"   ERROR: {e}")
+
     # Resumen
     print("\n" + "=" * 60)
-    print("✅ Test de conexión completado")
+    print("Test de conexion completado")
     print("=" * 60)
-    print("\n💡 Recuerda:")
+    print("\nRecuerda:")
     print("   - Rate limit: 5 requests cada 10 segundos")
-    print("   - El cliente maneja automáticamente el rate limiting")
-    print("   - Los créditos no expiran")
+    print("   - El cliente maneja automaticamente el rate limiting")
     print("\n")
-    
+
     return True
 
 
-async def test_vehicle_investigation(patente: str):
+async def test_rut_investigation(rut: str):
     """
-    Prueba una investigación completa de vehículo.
-    
+    Prueba una investigación completa por RUT.
+
     Args:
-        patente: Patente del vehículo a investigar
+        rut: RUT de la persona a investigar
     """
-    print(f"\n🔍 Investigando vehículo: {patente}")
+    print(f"\nInvestigando RUT: {rut}")
     print("-" * 40)
-    
+
     client = BoostrClient()
-    
+
+    # Vehículos
+    print("\nVehiculos:")
     try:
-        result = await client.investigar_vehiculo(patente)
-        
-        if result.vehiculo:
-            v = result.vehiculo
-            print(f"\n🚗 Vehículo encontrado:")
-            print(f"   Patente: {v.patente}")
-            print(f"   Marca: {v.marca}")
-            print(f"   Modelo: {v.modelo}")
-            print(f"   Año: {v.año}")
-            if v.color:
-                print(f"   Color: {v.color}")
-            if v.vin:
-                print(f"   VIN: {v.vin}")
-        
-        if result.multas:
-            print(f"\n⚠️ Multas encontradas: {len(result.multas)}")
-            for multa in result.multas[:3]:
-                print(f"   - {multa.juzgado} ({multa.comuna})")
-        
-        if result.revision_tecnica:
-            rt = result.revision_tecnica
-            print(f"\n📋 Revisión Técnica:")
-            print(f"   Estado: {rt.estado}")
-            print(f"   Vencimiento: {rt.fecha_vencimiento}")
-        
-        if result.soap:
-            print(f"\n🛡️ SOAP:")
-            print(f"   Vigente: {'Sí' if result.soap.vigente else 'No'}")
-        
-        print(f"\n💰 Créditos usados: {result.creditos_usados}")
-        
-    except BoostrNotFoundError:
-        print(f"   ❌ Vehículo no encontrado")
+        vehicles = await client.get_person_vehicles(rut)
+        if vehicles:
+            for v in vehicles:
+                print(f"   - {v.patente}: {v.marca} {v.modelo} ({v.año})")
+        else:
+            print("   No se encontraron vehiculos")
     except BoostrAPIError as e:
-        print(f"   ❌ Error: {e}")
+        print(f"   Error: {e}")
+
+    # Propiedades
+    print("\nPropiedades:")
+    try:
+        properties = await client.get_person_properties(rut)
+        if properties:
+            for p in properties:
+                print(f"   - {p.direccion}, {p.comuna} (Avaluo: {p.avaluo})")
+        else:
+            print("   No se encontraron propiedades")
+    except BoostrAPIError as e:
+        print(f"   Error: {e}")
+
+    # Defunción
+    print("\nEstado de defuncion:")
+    try:
+        deceased = await client.check_deceased(rut)
+        if deceased.fallecido:
+            print(f"   FALLECIDO - Fecha: {deceased.fecha_defuncion}")
+        else:
+            print("   No registra defuncion")
+    except BoostrAPIError as e:
+        print(f"   Error: {e}")
 
 
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("     BOOSTR API - Script de Prueba")
+    print("     BOOSTR API - Script de Prueba (Rutificador)")
     print("=" * 60 + "\n")
-    
+
     # Verificar si hay API key en argumentos
     if len(sys.argv) > 1:
         os.environ["BOOSTR_API_KEY"] = sys.argv[1]
-        print(f"✅ API Key recibida como argumento\n")
-    
+        print("API Key recibida como argumento\n")
+
     # Ejecutar tests
     asyncio.run(test_boostr_connection())
-    
-    # Si se proporciona una patente como segundo argumento, investigarla
+
+    # Si se proporciona un RUT como segundo argumento, investigarlo
     if len(sys.argv) > 2:
-        patente = sys.argv[2]
-        asyncio.run(test_vehicle_investigation(patente))
+        rut = sys.argv[2]
+        asyncio.run(test_rut_investigation(rut))

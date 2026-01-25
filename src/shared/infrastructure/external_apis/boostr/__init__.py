@@ -1,27 +1,20 @@
 """
-Boostr API Client.
+Boostr API Client (Rutificador).
 
 Cliente para integración con la API de Boostr Chile.
 https://docs.boostr.cl/reference
 
-Servicios disponibles:
-- Consulta de patentes (información de vehículos)
-- Rutificador Plus (nombre, vehículos, propiedades, etc.)
-- Multas de tránsito
-- Revisión técnica
-- SOAP
+Endpoints disponibles:
+- /rut/vehicles/{rut}.json - Vehículos por RUT
+- /rut/properties/{rut}.json - Propiedades por RUT
+- /rut/deceased/{rut}.json - Estado de defunción
 """
 
 from .client import BoostrClient, get_boostr_client, reset_boostr_client
 from .schemas import (
-    VehicleInfo,
-    VehicleExtendedInfo,
-    PersonInfo,
     PersonVehicle,
-    TrafficFine,
-    TechnicalReview,
-    SOAPInfo,
-    BoostrResponse,
+    PersonProperty,
+    DeceasedInfo,
 )
 from .exceptions import (
     BoostrAPIError,
@@ -32,17 +25,15 @@ from .exceptions import (
 )
 
 __all__ = [
+    # Client
     "BoostrClient",
     "get_boostr_client",
     "reset_boostr_client",
-    "VehicleInfo",
-    "VehicleExtendedInfo",
-    "PersonInfo",
+    # Schemas
     "PersonVehicle",
-    "TrafficFine",
-    "TechnicalReview",
-    "SOAPInfo",
-    "BoostrResponse",
+    "PersonProperty",
+    "DeceasedInfo",
+    # Exceptions
     "BoostrAPIError",
     "BoostrAuthenticationError",
     "BoostrRateLimitError",
