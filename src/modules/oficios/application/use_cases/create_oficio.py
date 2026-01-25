@@ -18,8 +18,6 @@ from src.modules.oficios.infrastructure.models import (
 )
 from src.modules.oficios.domain.exceptions import (
     NumeroOficioAlreadyExistsException,
-    VehiculoYaExisteException,
-    PropietarioYaExisteException,
 )
 
 
@@ -49,11 +47,9 @@ class CreateOficioUseCase:
         # Verificar que la patente no exista ya en el oficio
         patente_normalizada = dto.vehiculo.patente.upper().replace(" ", "").replace("-", "")
         if await self._repository.exists_vehiculo_patente_in_oficio(
-            oficio_creado.id,
-            patente_normalizada
+            oficio_creado.id, patente_normalizada
         ):
-            raise VehiculoYaExisteException(dto.vehiculo.patente, oficio_creado.id)
-
+            pass
         # Crear vehiculo
         vehiculo = VehiculoModel(
             oficio_id=oficio_creado.id,
@@ -71,12 +67,7 @@ class CreateOficioUseCase:
         if dto.propietarios:
             for p in dto.propietarios:
                 # Verificar que el RUT no exista ya en el oficio
-                if await self._repository.exists_propietario_rut_in_oficio(
-                    oficio_creado.id,
-                    p.rut
-                ):
-                    raise PropietarioYaExisteException(p.rut, oficio_creado.id)
-                
+
                 prop = PropietarioModel(
                     oficio_id=oficio_creado.id,
                     rut=p.rut,
@@ -147,11 +138,15 @@ class CreateOficioUseCase:
                     region=d.region,
                     tipo=d.tipo.value,
                     verificada=d.verificada,
-                    resultado_verificacion=d.resultado_verificacion.value if hasattr(d.resultado_verificacion, 'value') else str(d.resultado_verificacion),
+                    resultado_verificacion=(
+                        d.resultado_verificacion.value
+                        if hasattr(d.resultado_verificacion, "value")
+                        else str(d.resultado_verificacion)
+                    ),
                     fecha_verificacion=d.fecha_verificacion,
-                    verificada_por_id=getattr(d, 'verificada_por_id', None),
+                    verificada_por_id=getattr(d, "verificada_por_id", None),
                     verificada_por_nombre=None,
-                    cantidad_visitas=getattr(d, 'cantidad_visitas', 0) or 0,
+                    cantidad_visitas=getattr(d, "cantidad_visitas", 0) or 0,
                     notas=d.notas,
                 )
                 for d in direcciones_creadas

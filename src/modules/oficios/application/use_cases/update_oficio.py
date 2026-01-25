@@ -17,8 +17,6 @@ from src.modules.oficios.infrastructure.models import PropietarioModel, Direccio
 from src.modules.oficios.domain.exceptions import (
     OficioNotFoundException,
     OficioYaFinalizadoException,
-    VehiculoYaExisteException,
-    PropietarioYaExisteException,
 )
 from src.shared.domain.enums import EstadoOficioEnum
 
@@ -112,10 +110,6 @@ class AgregarPropietarioUseCase:
         oficio = await self._repository.get_by_id(oficio_id)
         if oficio is None:
             raise OficioNotFoundException(oficio_id)
-
-        # Verificar que el RUT no exista ya en el oficio
-        if await self._repository.exists_propietario_rut_in_oficio(oficio_id, dto.rut):
-            raise PropietarioYaExisteException(dto.rut, oficio_id)
 
         propietario = PropietarioModel(
             oficio_id=oficio_id,
