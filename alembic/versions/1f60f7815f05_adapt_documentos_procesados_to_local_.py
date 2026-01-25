@@ -21,14 +21,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade database schema - Adaptar documentos_procesados para local storage."""
-    # Eliminar índices antiguos
+    # Eliminar índices antiguos (el índice único ya garantiza la unicidad, no hay constraint separado)
     op.drop_index("ix_documentos_procesados_drive_file_id", table_name="documentos_procesados")
     op.drop_index("ix_documentos_procesados_drive_folder_id", table_name="documentos_procesados")
-
-    # Eliminar constraint único de drive_file_id
-    op.drop_constraint(
-        "documentos_procesados_drive_file_id_key", "documentos_procesados", type_="unique"
-    )
 
     # Agregar nuevas columnas
     op.add_column(
