@@ -350,8 +350,11 @@ class BoostrClient:
             if data.get("status") == "success" and data.get("data"):
                 deceased_data = data["data"]
                 return DeceasedInfo(
-                    fallecido=deceased_data.get("deceased") or deceased_data.get("fallecido") or False,
-                    fecha_defuncion=deceased_data.get("death_date") or deceased_data.get("fecha_defuncion"),
+                    fallecido=deceased_data.get("deceased")
+                    or deceased_data.get("fallecido")
+                    or False,
+                    fecha_defuncion=deceased_data.get("death_date")
+                    or deceased_data.get("fecha_defuncion"),
                 )
 
             return DeceasedInfo(fallecido=False)
