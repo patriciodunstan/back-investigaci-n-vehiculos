@@ -28,10 +28,10 @@ class TestDocumentUploadEndpoint:
         mock_pdf_processor.extract_text_from_bytes.return_value = "OFICIO N° 1234"
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ), patch(
             "src.modules.oficios.presentation.routers.document_upload_router._process_document_in_background",
@@ -73,10 +73,10 @@ class TestDocumentUploadEndpoint:
         ]
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ), patch(
             "src.modules.oficios.presentation.routers.document_upload_router._process_document_in_background",
@@ -110,10 +110,10 @@ class TestDocumentUploadEndpoint:
         mock_pdf_processor = MagicMock()
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ):
             # Archivo que no es PDF (contenido no empieza con %PDF)
@@ -144,10 +144,10 @@ class TestDocumentUploadEndpoint:
         mock_pdf_processor = MagicMock()
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ):
             files = [
@@ -205,30 +205,27 @@ class TestDocumentUploadEndpoint:
         self, test_client, auth_headers, test_buffet, mock_pdf_bytes
     ):
         """
-        Test que detecta correctamente tipo OFICIO.
+        Test que detecta correctamente tipo OFICIO por nombre de archivo.
         """
         mock_storage = MagicMock()
         mock_storage.save_file.return_value = "2024/01/oficio.pdf"
 
         mock_pdf_processor = MagicMock()
-        mock_pdf_processor.extract_text_from_bytes.return_value = """
-            JUZGADO DE LETRAS
-            OFICIO N° 1234/2024
-            En causa ROL C-5678
-        """
+        mock_pdf_processor.extract_text_from_bytes.return_value = "texto generico"
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ), patch(
             "src.modules.oficios.presentation.routers.document_upload_router._process_document_in_background",
             new_callable=AsyncMock,
         ):
+            # Usar nombre de archivo con keyword "oficio" para detección
             files = [
-                ("files", ("documento.pdf", io.BytesIO(mock_pdf_bytes), "application/pdf")),
+                ("files", ("oficio_1234.pdf", io.BytesIO(mock_pdf_bytes), "application/pdf")),
             ]
 
             response = await test_client.post(
@@ -246,31 +243,27 @@ class TestDocumentUploadEndpoint:
         self, test_client, auth_headers, test_buffet, mock_pdf_bytes
     ):
         """
-        Test que detecta correctamente tipo CAV.
+        Test que detecta correctamente tipo CAV por nombre de archivo.
         """
         mock_storage = MagicMock()
         mock_storage.save_file.return_value = "2024/01/cav.pdf"
 
         mock_pdf_processor = MagicMock()
-        mock_pdf_processor.extract_text_from_bytes.return_value = """
-            CERTIFICADO DE INSCRIPCIÓN
-            Patente: ABCD12
-            Marca: TOYOTA
-            Modelo: COROLLA
-        """
+        mock_pdf_processor.extract_text_from_bytes.return_value = "texto generico"
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ), patch(
             "src.modules.oficios.presentation.routers.document_upload_router._process_document_in_background",
             new_callable=AsyncMock,
         ):
+            # Usar nombre de archivo con keyword "cav" para detección
             files = [
-                ("files", ("documento.pdf", io.BytesIO(mock_pdf_bytes), "application/pdf")),
+                ("files", ("CAV_vehiculo.pdf", io.BytesIO(mock_pdf_bytes), "application/pdf")),
             ]
 
             response = await test_client.post(
@@ -297,10 +290,10 @@ class TestDocumentUploadEndpoint:
         mock_pdf_processor.extract_text_from_bytes.return_value = "OFICIO"
 
         with patch(
-            "src.shared.infrastructure.services.get_file_storage",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_file_storage",
             return_value=mock_storage,
         ), patch(
-            "src.shared.infrastructure.services.get_pdf_processor",
+            "src.modules.oficios.presentation.routers.document_upload_router.get_pdf_processor",
             return_value=mock_pdf_processor,
         ), patch(
             "src.modules.oficios.presentation.routers.document_upload_router._process_document_in_background",
