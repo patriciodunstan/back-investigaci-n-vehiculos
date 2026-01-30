@@ -44,27 +44,18 @@ class ColoredFormatter(logging.Formatter):
         self.use_colors = use_colors
 
     def format(self, record: logging.LogRecord) -> str:
-        # Formatear el timestamp
-        if record.asctime:
-            try:
-                dt = datetime.strptime(record.asctime, "%Y-%m-%d %H:%M:%S")
-                formatted_time = f"{dt.strftime('%d/%m/%Y %H:%M:%S')}"
-            except ValueError:
-                formatted_time = record.asctime
-        else:
-            formatted_time = record.asctime
+        # Formatear el timestamp usando record.created (siempre existe)
+        dt = datetime.fromtimestamp(record.created)
+        formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # Obtener nivel de log con color
         levelname = record.levelname
         if self.use_colors:
             level_color = self.COLORS.get(record.levelno, self.GREY)
             levelname = f"{level_color}{levelname}{self.RESET}"
-        else:
-            levelname = levelname
 
         # Formatear el mensaje completo
-        result = f"{formatted_time} | {levelname} | {record.name} | {record.getMessage()}"
-        return result
+        return f"{formatted_time} | {levelname} | {record.name} | {record.getMessage()}"
 
 
 # =============================================================================
