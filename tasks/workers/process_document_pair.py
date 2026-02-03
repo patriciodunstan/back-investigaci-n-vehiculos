@@ -78,7 +78,8 @@ async def process_document_pair_task(file_id: str) -> Dict[str, Any]:
             # 1. Buscar documento procesado por file_id o storage_path
             stmt = select(DocumentoProcesadoModel).where(DocumentoProcesadoModel.file_id == file_id)
             result = await session.execute(stmt)
-            doc_procesado = result.scalar_one_or_none()
+            # unique() es requerido porque DocumentoProcesadoModel tiene relaciones con lazy="joined"
+            doc_procesado = result.unique().scalar_one_or_none()
 
             if not doc_procesado:
                 return {
@@ -188,7 +189,8 @@ async def process_document_pair_task(file_id: str) -> Dict[str, Any]:
                         DocumentoProcesadoModel.file_id == file_id
                     )
                     result = await error_session.execute(stmt)
-                    doc = result.scalar_one_or_none()
+                    # unique() es requerido porque DocumentoProcesadoModel tiene relaciones con lazy="joined"
+                    doc = result.unique().scalar_one_or_none()
                     if doc:
                         doc.estado = EstadoDocumentoProcesadoEnum.ERROR
                         doc.error_mensaje = str(e)

@@ -191,7 +191,7 @@ class BoostrClient:
                 duration_ms = (end_time - start_time).total_seconds() * 1000
 
                 # Loguear response entrante
-                log_http_response(logger, response.status_code, duration_ms, response.content)
+                log_http_response(logger, response.status_code, duration_ms, len(response.content))
 
                 # Evaluar status code
                 if response.status_code == 401:

@@ -191,7 +191,8 @@ async def process_drive_document_pair_task(drive_file_id: str) -> Dict[str, Any]
                         DocumentoProcesadoModel.drive_file_id == drive_file_id
                     )
                     result = await error_session.execute(stmt)
-                    doc = result.scalar_one_or_none()
+                    # unique() es requerido porque DocumentoProcesadoModel tiene relaciones con lazy="joined"
+                    doc = result.unique().scalar_one_or_none()
                     if doc:
                         doc.estado = EstadoDocumentoProcesadoEnum.ERROR
                         doc.error_mensaje = str(e)
@@ -243,7 +244,8 @@ async def _get_or_create_documento_procesado(
         DocumentoProcesadoModel.drive_file_id == drive_file_id
     )
     result = await session.execute(stmt)
-    doc = result.scalar_one_or_none()
+    # unique() es requerido porque DocumentoProcesadoModel tiene relaciones con lazy="joined"
+    doc = result.unique().scalar_one_or_none()
 
     if doc:
         # Actualizar
