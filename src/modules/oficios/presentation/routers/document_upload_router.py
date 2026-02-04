@@ -11,14 +11,18 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.shared.infrastructure.database.session import get_db
 from src.core.config import get_settings
+from sqlalchemy import select, func
+
 from src.modules.oficios.presentation.schemas.document_upload_schemas import (
     BatchUploadResponse,
     DocumentUploadInfo,
+    DocumentStatusInfo,
+    DocumentStatusResponse,
 )
 from src.modules.oficios.infrastructure.models.documento_procesado_model import (
     DocumentoProcesadoModel,
@@ -46,7 +50,25 @@ async def _process_document_in_background(file_id: str) -> None:
 
     try:
         result = await process_document_pair_task(file_id)
-        logger.info(f"Documento {file_id} procesado: {result.get('status')}")
+        status = result.get('status')
+        
+        if status == "duplicated":
+            # Oficio ya existía - informar claramente
+            numero_oficio = result.get('numero_oficio', 'desconocido')
+            logger.info(
+                f"Documento {file_id}: OMITIDO - El oficio '{numero_oficio}' ya existe en el sistema"
+            )
+        elif status == "completed":
+            oficio_id = result.get('oficio_id')
+            logger.info(f"Documento {file_id}: COMPLETADO - Oficio creado (ID: {oficio_id})")
+        elif status == "waiting":
+            logger.info(f"Documento {file_id}: ESPERANDO PAR - Aguardando documento complementario")
+        elif status == "error":
+            error_msg = result.get('message', 'Error desconocido')
+            logger.warning(f"Documento {file_id}: ERROR - {error_msg}")
+        else:
+            logger.info(f"Documento {file_id} procesado: {status}")
+            
     except Exception as e:
         logger.error(f"Error procesando documento {file_id}: {e}", exc_info=True)
 
@@ -254,3 +276,205 @@ def _detectar_tipo_documento(nombre_archivo: str, texto: str) -> TipoDocumentoEn
         return TipoDocumentoEnum.CAV
 
     return TipoDocumentoEnum.DESCONOCIDO
+
+
+# =============================================================================
+# ENDPOINTS DE CONSULTA DE ESTADO
+# =============================================================================
+
+
+@router.get(
+    "/status",
+    response_model=DocumentStatusResponse,
+    summary="Consultar estado de documentos",
+    description="Consulta el estado de procesamiento de documentos por sus file_ids. "
+    "Permite al frontend conocer el resultado real del procesamiento.",
+)
+async def get_documents_status(
+    file_ids: str = Query(..., description="IDs de archivos separados por coma (ej: abc123,def456)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+) -> DocumentStatusResponse:
+    """
+    Consulta el estado de procesamiento de uno o más documentos.
+
+    Este endpoint permite al frontend hacer polling para conocer el estado
+    real de los documentos después de subirlos.
+
+    Args:
+        file_ids: Lista de file_ids separados por coma
+        db: Sesión de base de datos
+        current_user: Usuario autenticado
+
+    Returns:
+        DocumentStatusResponse con el estado de cada documento y resumen
+    """
+    # Parsear file_ids
+    ids_list = [fid.strip() for fid in file_ids.split(",") if fid.strip()]
+    
+    if not ids_list:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe proporcionar al menos un file_id",
+        )
+    
+    if len(ids_list) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Máximo 100 file_ids por consulta",
+        )
+
+    # Consultar documentos
+    stmt = select(DocumentoProcesadoModel).where(
+        DocumentoProcesadoModel.file_id.in_(ids_list)
+    )
+    result = await db.execute(stmt)
+    documentos = list(result.unique().scalars().all())
+
+    # Construir respuesta
+    documentos_info: List[DocumentStatusInfo] = []
+    resumen: dict = {
+        "pendiente": 0,
+        "esperando_par": 0,
+        "procesando": 0,
+        "completado": 0,
+        "error": 0,
+        "duplicado": 0,
+    }
+
+    for doc in documentos:
+        # Obtener número de oficio si existe
+        numero_oficio = None
+        if doc.datos_extraidos_json:
+            try:
+                datos = json.loads(doc.datos_extraidos_json)
+                numero_oficio = datos.get("numero_oficio")
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        documentos_info.append(
+            DocumentStatusInfo(
+                file_id=doc.file_id,
+                file_name=doc.file_name,
+                tipo_documento=doc.tipo_documento.value if doc.tipo_documento else None,
+                estado=doc.estado.value,
+                error_mensaje=doc.error_mensaje,
+                oficio_id=doc.oficio_id,
+                numero_oficio=numero_oficio,
+                par_file_id=None,  # TODO: obtener del par si existe
+                created_at=doc.created_at,
+                updated_at=doc.updated_at,
+            )
+        )
+        
+        # Actualizar resumen
+        estado_key = doc.estado.value
+        if estado_key in resumen:
+            resumen[estado_key] += 1
+
+    return DocumentStatusResponse(
+        documentos=documentos_info,
+        total=len(documentos_info),
+        resumen=resumen,
+    )
+
+
+@router.get(
+    "/status/recent",
+    response_model=DocumentStatusResponse,
+    summary="Documentos recientes del usuario",
+    description="Obtiene los documentos procesados más recientes del buffet del usuario.",
+)
+async def get_recent_documents_status(
+    limit: int = Query(20, ge=1, le=100, description="Máximo de documentos a retornar"),
+    buffet_id: Optional[int] = Query(None, description="Filtrar por buffet (admin puede ver todos)"),
+    estado: Optional[str] = Query(None, description="Filtrar por estado"),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+) -> DocumentStatusResponse:
+    """
+    Obtiene los documentos procesados más recientes.
+
+    Si el usuario es cliente, solo ve documentos de su buffet.
+    Si es admin/investigador puede filtrar por buffet o ver todos.
+
+    Args:
+        limit: Máximo de documentos a retornar
+        buffet_id: Filtrar por buffet (opcional)
+        estado: Filtrar por estado (opcional)
+        db: Sesión de base de datos
+        current_user: Usuario autenticado
+
+    Returns:
+        DocumentStatusResponse con documentos recientes
+    """
+    # Construir query base
+    stmt = select(DocumentoProcesadoModel)
+    
+    # Filtrar por buffet según rol
+    if current_user.rol == "cliente" and current_user.buffet_id:
+        stmt = stmt.where(DocumentoProcesadoModel.buffet_id == current_user.buffet_id)
+    elif buffet_id:
+        stmt = stmt.where(DocumentoProcesadoModel.buffet_id == buffet_id)
+    
+    # Filtrar por estado si se especifica
+    if estado:
+        try:
+            estado_enum = EstadoDocumentoProcesadoEnum(estado)
+            stmt = stmt.where(DocumentoProcesadoModel.estado == estado_enum)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Estado inválido: {estado}. Valores válidos: pendiente, esperando_par, procesando, completado, error, duplicado",
+            )
+    
+    # Ordenar por fecha y limitar
+    stmt = stmt.order_by(DocumentoProcesadoModel.created_at.desc()).limit(limit)
+    
+    result = await db.execute(stmt)
+    documentos = list(result.unique().scalars().all())
+
+    # Construir respuesta (similar al endpoint anterior)
+    documentos_info: List[DocumentStatusInfo] = []
+    resumen: dict = {
+        "pendiente": 0,
+        "esperando_par": 0,
+        "procesando": 0,
+        "completado": 0,
+        "error": 0,
+        "duplicado": 0,
+    }
+
+    for doc in documentos:
+        numero_oficio = None
+        if doc.datos_extraidos_json:
+            try:
+                datos = json.loads(doc.datos_extraidos_json)
+                numero_oficio = datos.get("numero_oficio")
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        documentos_info.append(
+            DocumentStatusInfo(
+                file_id=doc.file_id,
+                file_name=doc.file_name,
+                tipo_documento=doc.tipo_documento.value if doc.tipo_documento else None,
+                estado=doc.estado.value,
+                error_mensaje=doc.error_mensaje,
+                oficio_id=doc.oficio_id,
+                numero_oficio=numero_oficio,
+                par_file_id=None,
+                created_at=doc.created_at,
+                updated_at=doc.updated_at,
+            )
+        )
+        
+        estado_key = doc.estado.value
+        if estado_key in resumen:
+            resumen[estado_key] += 1
+
+    return DocumentStatusResponse(
+        documentos=documentos_info,
+        total=len(documentos_info),
+        resumen=resumen,
+    )

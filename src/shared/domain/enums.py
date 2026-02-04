@@ -148,12 +148,14 @@ class EstadoDocumentoProcesadoEnum(str, Enum):
     Flujo típico:
     PENDIENTE -> ESPERANDO_PAR -> PROCESANDO -> COMPLETADO
                                               -> ERROR
+                                              -> DUPLICADO
 
     - PENDIENTE: Documento subido, esperando procesamiento inicial
     - ESPERANDO_PAR: Documento procesado, esperando su par (Oficio espera CAV o viceversa)
     - PROCESANDO: Par completo encontrado, creando oficio
     - COMPLETADO: Oficio creado exitosamente
     - ERROR: Error durante el procesamiento
+    - DUPLICADO: Oficio ya existe en el sistema (número de oficio duplicado)
     """
 
     PENDIENTE = "pendiente"
@@ -161,3 +163,4 @@ class EstadoDocumentoProcesadoEnum(str, Enum):
     PROCESANDO = "procesando"
     COMPLETADO = "completado"
     ERROR = "error"
+    DUPLICADO = "duplicado"

@@ -296,6 +296,10 @@ async def _procesar_par_completo(
     """Procesa un par completo de documentos."""
     # Leer el otro PDF desde storage local
     storage_service = get_file_storage()
+    logger.debug(
+        f"Leyendo archivo par desde storage: {par_documento.storage_path} "
+        f"(file_id={par_documento.file_id})"
+    )
     par_pdf_bytes = storage_service.get_file(par_documento.storage_path)
 
     # Parsear el otro documento
@@ -374,16 +378,21 @@ async def _procesar_par_completo(
             "par_file_id": par_documento.file_id,
         }
     except NumeroOficioAlreadyExistsException as e:
-        # Actualizar estado a error en ambos documentos
-        doc_procesado.estado = EstadoDocumentoProcesadoEnum.ERROR
-        doc_procesado.error_mensaje = f"El número de oficio ya existe: {e.message}"
-        par_documento.estado = EstadoDocumentoProcesadoEnum.ERROR
-        par_documento.error_mensaje = f"El número de oficio ya existe: {e.message}"
+        # El oficio ya existe - esto NO es un error, es un duplicado esperado
+        logger.info(
+            f"Oficio ya existe en sistema: '{e.value}' - "
+            f"doc_id={doc_procesado.file_id}, par_id={par_documento.file_id}. "
+            f"Documentos marcados como DUPLICADO (no se creará nuevo oficio)."
+        )
+        doc_procesado.estado = EstadoDocumentoProcesadoEnum.DUPLICADO
+        doc_procesado.error_mensaje = f"El oficio '{e.value}' ya existe en el sistema. No se creó duplicado."
+        par_documento.estado = EstadoDocumentoProcesadoEnum.DUPLICADO
+        par_documento.error_mensaje = f"El oficio '{e.value}' ya existe en el sistema. No se creó duplicado."
         await session.commit()
         
         return {
-            "status": "error",
-            "message": f"El número de oficio '{e.value}' ya existe en el sistema",
+            "status": "duplicated",
+            "message": f"El oficio '{e.value}' ya existe en el sistema. Documentos omitidos.",
             "file_id": doc_procesado.file_id,
-            "error_code": "OFICIO_DUPLICADO",
+            "numero_oficio": e.value,
         }
