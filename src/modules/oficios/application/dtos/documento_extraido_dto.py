@@ -46,6 +46,8 @@ class CAVExtraidoDTO:
     vin: Optional[str] = None
     tipo: Optional[str] = None
     combustible: Optional[str] = None
+    rut_propietario: Optional[str] = None
+    nombre_propietario: Optional[str] = None
 
 
 @dataclass(frozen=True)
