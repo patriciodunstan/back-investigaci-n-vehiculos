@@ -383,7 +383,7 @@ async def _procesar_par_completo(
         
         return {
             "status": "error",
-            "message": f"El número de oficio '{e.numero_oficio}' ya existe en el sistema",
+            "message": f"El número de oficio '{e.value}' ya existe en el sistema",
             "file_id": doc_procesado.file_id,
             "error_code": "OFICIO_DUPLICADO",
         }
