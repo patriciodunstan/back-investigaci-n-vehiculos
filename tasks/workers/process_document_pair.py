@@ -127,14 +127,27 @@ async def process_document_pair_task(file_id: str) -> Dict[str, Any]:
                 tipo_documento = doc_procesado.tipo_documento
 
             # 5. Parsear documento
+            logger.info(f"Parseando documento {file_id} como {tipo_documento.value}")
             if tipo_documento == TipoDocumentoEnum.OFICIO:
                 parser = OficioParser()
                 datos_extraidos = parser.parse(texto)
+                logger.info(
+                    f"Datos extraídos de OFICIO {file_id}: "
+                    f"numero_oficio={datos_extraidos.get('numero_oficio')}, "
+                    f"rut={datos_extraidos.get('rut_propietario')}, "
+                    f"direcciones={len(datos_extraidos.get('direcciones', []))}"
+                )
                 oficio_extraido = OficioExtraidoDTO(**datos_extraidos)
                 cav_extraido = None
             elif tipo_documento == TipoDocumentoEnum.CAV:
                 parser = CAVParser()
                 datos_extraidos = parser.parse(texto)
+                logger.info(
+                    f"Datos extraídos de CAV {file_id}: "
+                    f"patente={datos_extraidos.get('patente')}, "
+                    f"marca={datos_extraidos.get('marca')}, "
+                    f"modelo={datos_extraidos.get('modelo')}"
+                )
                 cav_extraido = CAVExtraidoDTO(**datos_extraidos)
                 oficio_extraido = None
             else:
@@ -147,6 +160,40 @@ async def process_document_pair_task(file_id: str) -> Dict[str, Any]:
             # Actualizar datos extraídos
             doc_procesado.datos_extraidos_json = json.dumps(datos_extraidos, default=str)
             await session.flush()
+
+            # 5.1 Validar datos esenciales antes de continuar
+            if tipo_documento == TipoDocumentoEnum.OFICIO:
+                if not datos_extraidos.get('numero_oficio'):
+                    error_msg = (
+                        f"No se pudo extraer el número de oficio del documento {doc_procesado.file_name}. "
+                        f"Verifique que el PDF sea legible y contenga el número de oficio."
+                    )
+                    logger.error(error_msg)
+                    doc_procesado.estado = EstadoDocumentoProcesadoEnum.ERROR
+                    doc_procesado.error_mensaje = error_msg
+                    await session.commit()
+                    return {
+                        "status": "error",
+                        "message": error_msg,
+                        "file_id": file_id,
+                        "error_code": "NUMERO_OFICIO_NO_EXTRAIDO",
+                    }
+            elif tipo_documento == TipoDocumentoEnum.CAV:
+                if not datos_extraidos.get('patente'):
+                    error_msg = (
+                        f"No se pudo extraer la patente del CAV {doc_procesado.file_name}. "
+                        f"Verifique que el PDF sea legible y contenga la patente del vehículo."
+                    )
+                    logger.error(error_msg)
+                    doc_procesado.estado = EstadoDocumentoProcesadoEnum.ERROR
+                    doc_procesado.error_mensaje = error_msg
+                    await session.commit()
+                    return {
+                        "status": "error",
+                        "message": error_msg,
+                        "file_id": file_id,
+                        "error_code": "PATENTE_NO_EXTRAIDA",
+                    }
 
             # 6. Buscar par
             detector = DocumentPairDetector(session)

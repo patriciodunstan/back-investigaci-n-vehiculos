@@ -38,7 +38,22 @@ class OficioParser:
         >>> print(datos["numero_oficio"])
     """
 
-    # Patrones regex para extracción
+    # Patrones regex para extracción (múltiples patrones para mayor cobertura)
+    PATRONES_NUMERO_OFICIO = [
+        # Formato: OF-123, OFICIO N° 123, OF 123/2026
+        re.compile(r"(?:OF|OFICIO)[\s\-]*(?:N[°º]?\s*)?(\d+(?:[\-\/]\d+)?)", re.IGNORECASE),
+        # Formato: ROL 123-2026, ROL N° 123
+        re.compile(r"ROL[\s\-]*(?:N[°º]?\s*)?([A-Z]*[\-]?\d+[\-\/]?\d*)", re.IGNORECASE),
+        # Formato: Nº 123-2026, N° 123/2026 (al inicio de línea o después de espacios)
+        re.compile(r"(?:^|\s)N[°º]\s*(\d+[\-\/]?\d*)", re.IGNORECASE | re.MULTILINE),
+        # Formato: número puro al inicio tipo "123-2026" seguido de contexto judicial
+        re.compile(r"(\d{1,6}[\-\/]\d{4})", re.IGNORECASE),
+        # Formato: C-123-2026 o similar (causa)
+        re.compile(r"(?:CAUSA|C)[\s\-]*(\d+[\-\/]?\d*)", re.IGNORECASE),
+        # Formato: RIT, RUC
+        re.compile(r"(?:RIT|RUC)[\s\-:]*([A-Z0-9\-\/]+)", re.IGNORECASE),
+    ]
+    # Mantener el patrón original como fallback
     PATRON_NUMERO_OFICIO = re.compile(
         r"(?:OF|OFICIO|ROL)[\s\-]*(?:N[°º]?\s*)?(\d+(?:\/\d+)?)", re.IGNORECASE
     )
@@ -108,7 +123,7 @@ class OficioParser:
 
     def _extraer_numero_oficio(self, texto: str) -> Optional[str]:
         """
-        Extrae el número de oficio del texto.
+        Extrae el número de oficio del texto usando múltiples patrones.
 
         Args:
             texto: Texto a analizar (primeras líneas)
@@ -116,11 +131,26 @@ class OficioParser:
         Returns:
             Número de oficio o None
         """
+        logger.debug(f"Buscando número de oficio en texto (primeros 500 chars): {texto[:500]}")
+        
+        # Intentar con cada patrón
+        for i, patron in enumerate(self.PATRONES_NUMERO_OFICIO):
+            match = patron.search(texto)
+            if match:
+                numero = match.group(1).strip()
+                if numero and len(numero) >= 1:
+                    logger.info(f"Numero de oficio extraído con patrón {i}: '{numero}'")
+                    return numero
+        
+        # Fallback al patrón original si ninguno funcionó
         match = self.PATRON_NUMERO_OFICIO.search(texto)
         if match:
             numero = match.group(1)
-            logger.debug(f"Numero de oficio extraído: {numero}")
+            logger.info(f"Numero de oficio extraído con patrón original: '{numero}'")
             return numero
+        
+        # Log de warning si no se encontró
+        logger.warning(f"No se pudo extraer número de oficio del texto. Primeras 200 chars: {texto[:200]}")
         return None
 
     def _extraer_rut(self, texto: str) -> Optional[str]:

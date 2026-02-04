@@ -14,6 +14,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from src.shared.domain.value_objects.patente import Patente
+from src.shared.domain.value_objects.rut import RutChileno, es_rut_valido
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,8 @@ class CAVParser:
     - VIN (Número de chasis)
     - Tipo de vehículo
     - Combustible
+    - RUT del propietario
+    - Nombre del propietario
     
     Example:
         >>> parser = CAVParser()
@@ -39,38 +42,54 @@ class CAVParser:
         >>> print(datos["patente"])
     """
     
-    # Patrones regex para extracción
-    PATRON_PATENTE = re.compile(
-        r"(?:PATENTE|PLACA)[\s:]+([A-Z]{2,4}[\s\-]?\d{2,4})",
-        re.IGNORECASE
-    )
+    # Patrones regex para extracción de patente (múltiples formatos)
+    PATRONES_PATENTE = [
+        # Formato CAV oficial: "Inscripción : BPHR.40-9" o "Inscripción : LGCR.75-1"
+        re.compile(r"Inscripci[óo]n\s*:\s*([A-Z]{2,4}[\.\s]?\d{2,4}[\-]?\d?)", re.IGNORECASE),
+        # Formato INS. al final del documento
+        re.compile(r"INS\.\s*:\s*([A-Z]{2,4}[\.\s]?\d{2,4}[\-]?\d?)", re.IGNORECASE),
+        # Formato tradicional PATENTE/PLACA
+        re.compile(r"(?:PATENTE|PLACA)[\s:]+([A-Z]{2,4}[\s\-]?\d{2,4})", re.IGNORECASE),
+        # Placa patente única en texto
+        re.compile(r"placa\s+patente\s+[úu]nica\s*:?\s*([A-Z]{2,4}[\.\s]?\d{2,4}[\-]?\d?)", re.IGNORECASE),
+    ]
+    
     PATRON_MARCA = re.compile(
         r"(?:MARCA)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|MODELO|$)",
         re.IGNORECASE
     )
     PATRON_MODELO = re.compile(
-        r"(?:MODELO)[\s:]+([A-Z0-9ÁÉÍÓÚÑ\s\-]+?)(?:\n|AÑO|AÑO|$)",
+        r"(?:MODELO)[\s:]+([A-Z0-9ÁÉÍÓÚÑ\s\-\.]+?)(?:\n|Nro|AÑO|$)",
         re.IGNORECASE
     )
     PATRON_ANO = re.compile(
-        r"(?:AÑO|AÑO)[\s:]+(\d{4})",
+        r"(?:AÑO|Año)[\s:]+(\d{4})",
         re.IGNORECASE
     )
     PATRON_COLOR = re.compile(
-        r"(?:COLOR)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|VIN|CHASIS|TIPO|$)",
+        r"(?:COLOR)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|Combustible|VIN|CHASIS|TIPO|$)",
         re.IGNORECASE
     )
     PATRON_VIN = re.compile(
-        r"(?:VIN|CHASIS|NÚMERO\s+CHASIS)[\s:]+([A-Z0-9]{10,17})",
+        r"(?:VIN|Nro\.?\s*(?:Chasis|Serie|Vin))[\s:]+([A-Z0-9]{10,17})",
         re.IGNORECASE
     )
     PATRON_TIPO = re.compile(
-        r"(?:TIPO)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|COMBUSTIBLE|$)",
+        r"(?:Tipo\s+Veh[íi]culo)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|Año|AÑO|$)",
         re.IGNORECASE
     )
     PATRON_COMBUSTIBLE = re.compile(
-        r"(?:COMBUSTIBLE)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|$)",
+        r"(?:COMBUSTIBLE)[\s:]+([A-ZÁÉÍÓÚÑ\s\-]+?)(?:\n|PBV|$)",
         re.IGNORECASE
+    )
+    # Patrones para datos del propietario
+    PATRON_RUT = re.compile(
+        r"R\.?U\.?[NT]\.?\s*:\s*(\d{1,2}\.?\d{3}\.?\d{3}[\-][\dkK])",
+        re.IGNORECASE
+    )
+    PATRON_NOMBRE_PROPIETARIO = re.compile(
+        r"(?:DATOS DEL PROPIETARIO.*?)?Nombre\s*:\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\n|R\.U|$)",
+        re.IGNORECASE | re.DOTALL
     )
     
     # Marcas comunes para normalización
@@ -109,8 +128,13 @@ class CAVParser:
             - vin: VIN/Número de chasis (str or None)
             - tipo: Tipo de vehículo (str or None)
             - combustible: Tipo de combustible (str or None)
+            - rut_propietario: RUT del propietario (str or None)
+            - nombre_propietario: Nombre del propietario (str or None)
         """
         texto_normalizado = self._normalizar_texto(texto)
+        
+        # Log inicial para debugging
+        logger.debug(f"CAVParser procesando texto (primeros 500 chars): {texto_normalizado[:500]}")
         
         datos = {
             "patente": self._extraer_patente(texto_normalizado),
@@ -121,11 +145,14 @@ class CAVParser:
             "vin": self._extraer_vin(texto_normalizado),
             "tipo": self._extraer_tipo(texto_normalizado),
             "combustible": self._extraer_combustible(texto_normalizado),
+            "rut_propietario": self._extraer_rut(texto_normalizado),
+            "nombre_propietario": self._extraer_nombre_propietario(texto_normalizado),
         }
         
-        logger.debug(
+        logger.info(
             f"CAVParser extrajo: patente={datos['patente']}, "
-            f"marca={datos['marca']}, modelo={datos['modelo']}"
+            f"marca={datos['marca']}, modelo={datos['modelo']}, "
+            f"rut={datos['rut_propietario']}"
         )
         
         return datos
@@ -158,28 +185,48 @@ class CAVParser:
         Returns:
             Patente validada y normalizada o None
         """
-        match = self.PATRON_PATENTE.search(texto)
-        if match:
-            patente_str = match.group(1).strip()
-            try:
-                # Validar y normalizar usando Value Object
-                patente = Patente.crear(patente_str)
-                logger.debug(f"Patente extraída y validada: {patente.valor}")
-                return patente.valor
-            except ValueError:
-                logger.warning(f"Patente encontrada pero inválida: {patente_str}")
+        logger.debug(f"Buscando patente en texto (primeros 300 chars): {texto[:300]}")
         
-        # Intentar buscar patente sin etiqueta (patrón común en CAVs)
-        patron_libre = re.compile(r"\b([A-Z]{2}\d{4}|[A-Z]{4}\d{2})\b")
-        matches = patron_libre.findall(texto)
-        for patente_str in matches:
-            try:
-                patente = Patente.crear(patente_str)
-                logger.debug(f"Patente extraída (sin etiqueta): {patente.valor}")
-                return patente.valor
-            except ValueError:
-                continue
+        # Intentar con cada patrón de patente
+        for i, patron in enumerate(self.PATRONES_PATENTE):
+            match = patron.search(texto)
+            if match:
+                patente_str = match.group(1).strip()
+                # Normalizar: remover puntos y espacios, formato XX0000 o XXXX00
+                patente_str = patente_str.replace(".", "").replace(" ", "")
+                logger.debug(f"Patrón {i} encontró patente candidata: '{patente_str}'")
+                try:
+                    # Validar y normalizar usando Value Object
+                    patente = Patente.crear(patente_str)
+                    logger.info(f"Patente extraída y validada con patrón {i}: {patente.valor}")
+                    return patente.valor
+                except ValueError as e:
+                    logger.warning(f"Patente encontrada pero inválida: {patente_str} - {e}")
+                    continue
         
+        # Intentar buscar patente sin etiqueta - formatos chilenos
+        # Formato antiguo: AA0000 (2 letras + 4 números)
+        # Formato nuevo: AAAA00 (4 letras + 2 números)
+        # Formato nuevo extendido: AAAA.00-0 (4 letras + punto + 2 números + guión + 1 número)
+        patrones_libre = [
+            re.compile(r"\b([A-Z]{4}[\.\s]?\d{2}[\-]?\d)\b"),  # LGCR.75-1, BPHR.40-9
+            re.compile(r"\b([A-Z]{2,4}[\.\s]?\d{3,4}[\-]?[A-Z0-9]?)\b"),  # VYL.087-K, RXX.042-3
+            re.compile(r"\b([A-Z]{2}\d{4})\b"),  # AA0000
+            re.compile(r"\b([A-Z]{4}\d{2})\b"),  # AAAA00
+        ]
+        
+        for patron in patrones_libre:
+            matches = patron.findall(texto)
+            for patente_str in matches:
+                patente_str = patente_str.replace(".", "").replace(" ", "")
+                try:
+                    patente = Patente.crear(patente_str)
+                    logger.info(f"Patente extraída (sin etiqueta): {patente.valor}")
+                    return patente.valor
+                except ValueError:
+                    continue
+        
+        logger.warning(f"No se pudo extraer patente del CAV")
         return None
     
     def _extraer_marca(self, texto: str) -> Optional[str]:
@@ -334,5 +381,50 @@ class CAVParser:
             if len(combustible) > 2:
                 logger.debug(f"Combustible extraído: {combustible}")
                 return combustible
+        
+        return None
+    
+    def _extraer_rut(self, texto: str) -> Optional[str]:
+        """
+        Extrae el RUT del propietario.
+        
+        Args:
+            texto: Texto a analizar
+        
+        Returns:
+            RUT validado y formateado o None
+        """
+        match = self.PATRON_RUT.search(texto)
+        if match:
+            rut_str = match.group(1).strip()
+            if es_rut_valido(rut_str):
+                try:
+                    # Validar y formatear usando Value Object
+                    rut = RutChileno.crear(rut_str)
+                    logger.info(f"RUT extraído y validado: {rut.valor}")
+                    return rut.valor
+                except ValueError:
+                    logger.warning(f"RUT encontrado pero inválido: {rut_str}")
+        
+        return None
+    
+    def _extraer_nombre_propietario(self, texto: str) -> Optional[str]:
+        """
+        Extrae el nombre del propietario del vehículo.
+        
+        Args:
+            texto: Texto a analizar
+        
+        Returns:
+            Nombre del propietario o None
+        """
+        match = self.PATRON_NOMBRE_PROPIETARIO.search(texto)
+        if match:
+            nombre = match.group(1).strip()
+            nombre = re.sub(r"\s+", " ", nombre)
+            nombre = nombre.strip(".,:-")
+            if len(nombre) > 3:
+                logger.debug(f"Nombre propietario extraído: {nombre}")
+                return nombre
         
         return None
