@@ -60,6 +60,26 @@ class TestPatente:
         patente = Patente.crear("AB1234")
         assert patente.formato == "antiguo"
 
+    def test_patente_formato_nuevo_extendido(self):
+        """Patente formato nuevo extendido (BPHR409, LGCR751) se detecta"""
+        patente = Patente.crear("BPHR.40-9")
+        assert patente.valor == "BPHR409"
+        assert patente.formato == "nuevo_extendido"
+        
+        patente2 = Patente.crear("LGCR.75-1")
+        assert patente2.valor == "LGCR751"
+        assert patente2.formato == "nuevo_extendido"
+
+    def test_patente_formato_mixto(self):
+        """Patente formato mixto (VV08040, VYL087K) se detecta"""
+        patente = Patente.crear("VV.0804-0")
+        assert patente.valor == "VV08040"
+        assert patente.formato == "mixto"
+        
+        patente2 = Patente.crear("VYL.087-K")
+        assert patente2.valor == "VYL087K"
+        assert patente2.formato == "mixto"
+
     def test_patente_normaliza(self):
         """Patente se normaliza a mayúsculas"""
         patente = Patente.crear("abcd-12")
@@ -67,7 +87,13 @@ class TestPatente:
 
     def test_patente_invalida_lanza_error(self):
         """
-        Patente inválida lanza error
+        Patente inválida lanza error (formatos no reconocidos)
         """
         with pytest.raises(ValueError):
-            Patente.crear("ABC123")
+            Patente.crear("A1")  # Muy corta
+        
+        with pytest.raises(ValueError):
+            Patente.crear("12345678")  # Solo números
+        
+        with pytest.raises(ValueError):
+            Patente.crear("ABCDEFGH")  # Solo letras
